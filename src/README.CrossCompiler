@@ -1,0 +1,5 @@
+These environmental variables are needed when building the cross compiler
+
+export PREFIX="$HOME/sw/cpe_454"
+export TARGET=x86_64-elf
+export PATH="$PREFIX/bin:$PATH"
