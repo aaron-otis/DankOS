@@ -1,12 +1,12 @@
 #include "vga.h"
 #include "../lib/string.h"
+#include "../lib/stdio.h"
 
 #define NEWLINE '\n'
 #define VGA_PTR ((void *) VGA_ADDR)
 #define VGA_BUF_LEN (SCREEN_WIDTH * SCREEN_HEIGHT)
 #define VGA_BG_SHIFT 4
 #define VGA_BLINK_SHIFT 7
-#define BITS_IN_BYTE 8
 
 static int buffer_pos;
 static int cursor_pos;
@@ -58,14 +58,17 @@ extern void VGA_display_char(char c) {
     
     if (c == NEWLINE) { /* Handle a newline character. */
         /* Clear cursor attributes. */
-        vga_buff[buffer_pos] = attributes << BITS_IN_BYTE;
+        vga_buff[buffer_pos] = attributes << CHAR_BIT;
+        vga_buff[cursor_pos] = attributes << CHAR_BIT;
 
         /* Advance to new position in the buffer. */
         buffer_pos += SCREEN_WIDTH - (buffer_pos % SCREEN_WIDTH);
+        cursor_pos = buffer_pos;
     }
     else {
         /* Add character to the buffer. */
-        vga_buff[buffer_pos++] = (attributes << BITS_IN_BYTE) | c;
+        vga_buff[buffer_pos++] = (attributes << CHAR_BIT) | c;
+        cursor_pos++;
     }
 
     /* Scroll screen if buffer position is past buffer. */
@@ -73,7 +76,7 @@ extern void VGA_display_char(char c) {
         scroll_screen();
 
     /* Set cursor attributes. */
-    vga_buff[cursor_pos] |= (~attributes) << BITS_IN_BYTE;
+    vga_buff[cursor_pos] |= (~attributes) << CHAR_BIT;
 }
 
 /*
@@ -87,18 +90,28 @@ extern void VGA_display_str(const char *s) {
         VGA_display_char(s[i]);
 }
 
-extern void VGA_set_cursor_pos(int pos) {
+extern int VGA_set_cursor_pos(int pos) {
 
     /* Clear cursor attributes. */
-    vga_buff[cursor_pos] |= attributes << BITS_IN_BYTE;
+    vga_buff[cursor_pos] |= attributes << CHAR_BIT;
 
-    cursor_pos = pos; /* Set new cursor position. */
+    if (pos > 0 && pos < VGA_BUF_LEN)
+        cursor_pos = pos; /* Set new cursor position. */
+    else
+        return EXIT_FAILURE;
 
     /* set cursor attributes. */
-    vga_buff[cursor_pos] |= (~attributes) << BITS_IN_BYTE;
+    vga_buff[cursor_pos] |= (~attributes) << CHAR_BIT;
+
+    return EXIT_SUCCESS;
 }
 
-extern void VGA_fill_buff(char c) {
+extern int VGA_get_cur_pos() {
 
-    memset((void *) VGA_ADDR, c, VGA_BUF_LEN * 2);
+    return cursor_pos;
+}
+
+extern int VGA_get_buf_pos() {
+
+    return buffer_pos;
 }

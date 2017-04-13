@@ -1,7 +1,8 @@
 #ifndef __VGA_H
 #define __VGA_H
 
-#include "../lib/types.h"
+#include <limits.h>
+#include "../lib/stdlib.h"
 
 /* Buffer constants. */
 #define VGA_ADDR 0xB8000
@@ -34,9 +35,8 @@ extern int VGA_set_attr(char fg, char bg, char blink);
 extern void VGA_clear(void);
 extern void VGA_display_char(char c);
 extern void VGA_display_str(const char *s);
-extern void VGA_set_cursor_pos(int pos);
-
-/* Debugging functions. */
-extern void VGA_fill_buff(char c);
+extern int VGA_set_cursor_pos(int pos);
+extern int VGA_get_cur_pos();
+extern int VGA_get_buf_pos();
 
 #endif
