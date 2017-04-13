@@ -16,7 +16,6 @@ used to test if the driver will correctly scroll the screen.";
      * VGA driver tests. 
      */
 
-    VGA_init(); /* Initialize VGA driver. */
 
     /* Set VGA character attributes. */
     VGA_set_attr(VGA_WHITE, VGA_BLACK, 0);
@@ -68,7 +67,7 @@ void stdio_tests() {
     printk("\n\nBeginning printk tests...\n");
     printk("Printing the character 'a': %c\nPrinting the test string: %s\n", 
      'a', str);
-    printk("Printing the unsigned integer 123: %u\n", test);
+    printk("Printing the unsigned integer 123: %lu\n", test);
     printk("Testing literal unsigned integer 456: %u\n", 456);
     printk("Testing pointer cast to unsigned long int: %lu\n", (unsigned long) 
      &test);
@@ -81,8 +80,14 @@ void stdio_tests() {
         printk("%x ", i);
     printk("\n");
 
-    printk("Testing pointer 0x123: %p\n", 0x123);
+    printk("Testing pointer 0x123: %p\n", (void *) 0x123);
     printk("Testing pointer &test: %p\n", &test);
     printk("Cursor position: %d\n", VGA_get_cur_pos());
     printk("Buffer position: %d\n", VGA_get_buf_pos());
+}
+
+void ps2_tests() {
+}
+
+void keyboard_tests() {
 }
