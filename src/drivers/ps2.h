@@ -2,8 +2,12 @@
 #define _PS2_H
 
 #include "../lib/stdlib.h"
+#include "io.h"
 
 extern int PS2_init(void);
+extern int PS2_enable_device(int dev);
+extern int PS2_disable_device(int dev);
+extern int PS2_reset_device(int dev);
 
 #define PS2_DATA 0x60
 #define PS2_COMMAND 0x64
@@ -58,5 +62,16 @@ extern int PS2_init(void);
 #define PS2_OUT_BUF_FULL_PORT_2 (1 << 5)
 #define PS2_PORT_1_CLOCK_OUTPUT (1 << 6)
 #define PS2_PORT_1_DATA_OUTPUT (1 << 7)
+
+/* Status register flags. */
+#define PS2_STATUS_OUTPUT 1
+#define PS2_STATUS_INPUT (1 << 1)
+/* PS2_SYS_FLAG is also used here. */
+#define PS2_CMD_OR_DATA (1 << 3) /* 0 for data for device, 1 for data for 
+                                    command. */
+#define PS2_UNKNOWN_1 (1 << 4)
+#define PS2_UNKNOWN_2 (1 << 5)
+#define PS2_TIME_OUT (1 << 6) /* 1 for a timeout error, 0 otherwise. */
+#define PS2_PARITY_ERR (1 << 7) /* 1 for parity error, 0 otherwise. */
 
 #endif
