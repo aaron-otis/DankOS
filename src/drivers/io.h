@@ -1,7 +1,7 @@
 #ifndef _IO_H
 #define _IO_H
 
-#include <stdint.h>
+#include "../lib/stdint.h"
 
 
 /* Sends a 8/16/32-bit value on a I/O location. */
