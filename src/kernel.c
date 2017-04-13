@@ -1,17 +1,35 @@
 #include "kernel.h"
 #include "kernel_tests.h"
 #include "lib/debug.h"
+#include "drivers/vga.h"
+#include "drivers/ps2.h"
+#include "lib/stdio.h"
 
-void sleep() {
-    long i = 0;
+static void halt_cpu() {
 
-    while (i >= 0)
-        i++;
+    for (;;) /* Infinite loop. */
+        HALT_CPU
 }
 
 int kernel_main() {
 
-    /* Run kernel tests. */
+    /* 
+     * Initializations.
+     */
+
+    /* Initialize VGA driver. */
+    if (VGA_init() == EXIT_FAILURE)
+        halt_cpu();
+
+    /* Initialize PS2 driver. */
+    if (PS2_init() == EXIT_FAILURE) {
+        printk("PS2 driver initialization failure\n");
+        halt_cpu();
+    }
+
+    /* 
+     * Run kernel tests. 
+     */
 
     /* VGA driver tests. */
     vga_driver_tests();
@@ -19,6 +37,9 @@ int kernel_main() {
     /* stdio tests. */
     stdio_tests();
 
-    for (;;) /* Infinite loop. */
-        HALT_CPU
+    /* PS2 tests. */
+    ps2_tests();
+
+    /* Halt cpu at end for testing. */
+    halt_cpu();
 }
