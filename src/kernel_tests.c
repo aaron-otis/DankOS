@@ -1,3 +1,4 @@
+#include <limits.h>
 #include "drivers/vga.h"
 #include "lib/string.h"
 #include "lib/stdio.h"
@@ -59,6 +60,7 @@ used to test if the driver will correctly scroll the screen.";
 void stdio_tests() {
     char *str = "test string";
     unsigned long test = 123;
+    int i;
 
     VGA_set_attr(VGA_BRIGHT_MAGENTA, VGA_BLACK, 0);
 
@@ -68,6 +70,19 @@ void stdio_tests() {
      'a', str);
     printk("Printing the unsigned integer 123: %u\n", test);
     printk("Testing literal unsigned integer 456: %u\n", 456);
+    printk("Testing pointer cast to unsigned long int: %lu\n", (unsigned long) 
+     &test);
 
     printk("Testing literal integer -789: %d\n", -789);
+    printk("Testing literal integer 123 (0x7B) in hex: %x\n", 123);
+    printk("Testing literal integer 0xDEADBEEF in hex: %x\n", 0xDEADBEEF);
+    printk("Testing pointer converted to hex: %lx\n", (unsigned long) &test);
+    for (i = 0; i < 33; i++)
+        printk("%x ", i);
+    printk("\n");
+
+    printk("Testing pointer 0x123: %p\n", 0x123);
+    printk("Testing pointer &test: %p\n", &test);
+    printk("Cursor position: %d\n", VGA_get_cur_pos());
+    printk("Buffer position: %d\n", VGA_get_buf_pos());
 }
