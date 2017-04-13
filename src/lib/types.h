@@ -4,7 +4,6 @@
 /* Constants */
 
 /* Return values. */
-#define EXIT_SUCCESS 0L
 
 /* Types. */
 
