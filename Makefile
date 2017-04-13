@@ -64,7 +64,7 @@ update-img: $(kernel) $(grup_cfg) make-img
 	@sudo losetup -d /dev/loop0
 	@sudo losetup -d /dev/loop1
 
-$(kernel): $(assembly_object_files) $(linker_script) $(c_object_files) $(drv_object_files)
+$(kernel): $(assembly_object_files) $(linker_script) $(c_object_files) $(drv_object_files) $(lib_obj_files) $(lib_files)
 	cd src && $(MAKE) && cd ..
 	ld -n -T $(linker_script) -o $(kernel) $(assembly_object_files) $(c_object_files) $(lib_obj_files) $(drv_object_files)
 
