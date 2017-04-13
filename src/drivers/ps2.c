@@ -4,9 +4,6 @@
 #define PS2_DEV_1 0
 #define PS2_DEV_2 1
 
-static char *data = (char *) PS2_DATA;
-static char *command = (char *) PS2_COMMAND;
-
 static char PS2_poll_read(void) {
     char status = inb(PS2_STATUS);
 
@@ -67,7 +64,6 @@ extern int PS2_reset_device(int dev) {
 }
 
 extern int PS2_init(void) {
-    int ret;
     uint8_t config = 0;
 
     /* Disable first device. */
