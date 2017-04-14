@@ -32,6 +32,7 @@
 
 extern int VGA_init(void);
 extern int VGA_set_attr(char fg, char bg, char blink);
+extern char VGA_get_attr();
 extern void VGA_clear(void);
 extern void VGA_display_char(char c);
 extern void VGA_display_str(const char *s);

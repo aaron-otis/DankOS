@@ -41,6 +41,11 @@ extern int VGA_set_attr(char fg, char bg, char blink) {
     return attributes >= 0;
 }
 
+extern char VGA_get_attr() {
+
+    return attributes;
+}
+
 extern void VGA_clear(void) {
 
     /* Set all bytes in video memory to zero. */
