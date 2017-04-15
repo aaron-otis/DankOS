@@ -24,10 +24,9 @@ extern void *memcpy(void *dest, const void *src, size_t n) {
 }
 
 extern size_t strlen(const char *s) {
-    size_t len = 0;
-    int i;
+    size_t len;
 
-    for (i = 0; s[i] != STR_END; i++, len++)
+    for (len = 0; s[len] != STR_END; len++)
         ; /* Iterate through |s| until null character is found. */
 
     return len;
