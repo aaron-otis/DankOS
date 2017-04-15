@@ -36,7 +36,7 @@ void print_char(char c) {
     VGA_display_char(c);
 }
 
-int build_string(char **str, unsigned long long val, int base, int sign) {
+static int build_string(char **str, unsigned long long val, int base, int sign) {
     int len, i, size;
 
     /* Determine the string length. */
@@ -76,10 +76,10 @@ int build_string(char **str, unsigned long long val, int base, int sign) {
         (*str)[size - len] = 0;
     }
 
-    return EXIT_SUCCESS;
+    return strlen(*str);
 }
 
-void print_int(int i) {
+static int print_int(int i) {
     int sign;
     char buf[LONG_STR_LEN + 1], *str;
 
@@ -99,9 +99,10 @@ void print_int(int i) {
         str--;
 
     VGA_display_str(str);
+    return strlen(str);
 }
 
-void print_uint(unsigned int u) {
+static int print_uint(unsigned int u) {
     char str[LONG_STR_LEN];
     char *buf;
 
@@ -110,9 +111,10 @@ void print_uint(unsigned int u) {
         VGA_display_str("\nprint_uint error\n");
 
     VGA_display_str(str);
+    return strlen(str);
 }
 
-void print_hex(unsigned int u) {
+static int print_hex(unsigned int u) {
     char str[LONG_STR_LEN], *buf;
 
     buf = str;
@@ -120,9 +122,10 @@ void print_hex(unsigned int u) {
         VGA_display_str("\nprint_uint error\n");
 
     VGA_display_str(str);
+    return strlen(str);
 }
 
-void print_ptr(void *p) {
+static int print_ptr(void *p) {
     char str[LONG_STR_LEN + 2], *buf;
 
     str[0] = '0';
@@ -133,16 +136,18 @@ void print_ptr(void *p) {
         VGA_display_str("\nprint_ptr error\n");
 
     VGA_display_str(str);
+    return strlen(str);
 }
 
-void print_str(char *str) {
+static int print_str(char *str) {
     VGA_display_str(str);
+    return strlen(str);
 }
 
 
 __attribute__ ((format (printf, 1, 2))) extern int printk(const char *fmt, 
  ...) {
-    int i;
+    int i, len = 0;
     va_list ap;
 
     va_start(ap, fmt);
@@ -175,62 +180,66 @@ __attribute__ ((format (printf, 1, 2))) extern int printk(const char *fmt,
             switch (fmt[i]) {
                 case FMT_DELIM:
                     print_char(fmt[i]);
+                    len++;
                     break;
                 
                 case INT_DELIM:
                     if (modifier == SHORT_ARG)
-                        print_int(va_arg(ap, int));
+                        len += print_int(va_arg(ap, int));
                     else if (modifier == LONG_ARG)
-                        print_int(va_arg(ap, long int));
+                        len += print_int(va_arg(ap, long int));
                     else if (modifier == QUAD_ARG)
-                        print_int(va_arg(ap, long long int));
+                        len += print_int(va_arg(ap, long long int));
                     else
-                        print_int(va_arg(ap, int));
+                        len += print_int(va_arg(ap, int));
                     break;
 
                 case UINT_DELIM:
                     if (modifier == SHORT_ARG)
-                        print_uint(va_arg(ap, int));
+                        len += print_uint(va_arg(ap, int));
                     else if (modifier == LONG_ARG)
-                        print_uint(va_arg(ap, long int));
+                        len += print_uint(va_arg(ap, long int));
                     else if (modifier == QUAD_ARG)
-                        print_uint(va_arg(ap, long long int));
+                        len += print_uint(va_arg(ap, long long int));
                     else
-                        print_uint(va_arg(ap, unsigned int));
+                        len += print_uint(va_arg(ap, unsigned int));
                     break;
 
                 case HEX_DELIM:
                     if (modifier == SHORT_ARG)
-                        print_hex(va_arg(ap, unsigned int));
+                        len += print_hex(va_arg(ap, unsigned int));
                     else if (modifier == LONG_ARG)
-                        print_hex(va_arg(ap, unsigned long int));
+                        len += print_hex(va_arg(ap, unsigned long int));
                     else if (modifier == QUAD_ARG)
-                        print_hex(va_arg(ap, unsigned long long int));
+                        len += print_hex(va_arg(ap, unsigned long long int));
                     else
-                        print_hex(va_arg(ap, unsigned int));
+                        len += print_hex(va_arg(ap, unsigned int));
                     break;
 
                 case CHAR_DELIM:
                     print_char(va_arg(ap, int));
+                    len++;
                     break;
 
                 case PTR_DELIM:
-                    print_ptr(va_arg(ap, void *));
+                    len += print_ptr(va_arg(ap, void *));
                     break;
 
                 case STR_DELIM:
-                    print_str(va_arg(ap, char *));
+                    len += print_str(va_arg(ap, char *));
                     break;
 
                 default:
                     return -1;
             }
         }
-        else
+        else {
             print_char(fmt[i]);
+            len++;
+        }
     }
 
     va_end(ap);
 
-    return EXIT_SUCCESS;
+    return len;
 }
