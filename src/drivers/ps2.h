@@ -2,12 +2,17 @@
 #define _PS2_H
 
 #include "../lib/stdlib.h"
+#include <stddef.h>
 #include "io.h"
 
 extern int PS2_init(void);
 extern int PS2_enable_device(int dev);
 extern int PS2_disable_device(int dev);
 extern int PS2_reset_device(int dev);
+extern int PS2_write(uint8_t c);
+extern uint8_t PS2_read();
+extern int PS2_write_data(uint8_t *data, size_t size);
+extern int PS2_read_data(uint8_t **data, size_t size);
 
 #define PS2_DATA 0x60
 #define PS2_COMMAND 0x64

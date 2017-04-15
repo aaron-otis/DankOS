@@ -4,7 +4,7 @@
 #define PS2_DEV_1 0
 #define PS2_DEV_2 1
 
-static char PS2_poll_read(void) {
+static uint8_t PS2_poll_read(void) {
     char status = inb(PS2_STATUS);
 
     while (!(status & PS2_STATUS_OUTPUT))
@@ -81,4 +81,31 @@ extern int PS2_init(void) {
     PS2_poll_write(config); /* Write configuration to controller. */
 
     return EXIT_SUCCESS;
+}
+
+extern int PS2_write_data(uint8_t *data, size_t size) {
+    int i;
+
+    for (i = 0; i < size; i++)
+        PS2_poll_write(data[i]);
+
+    return EXIT_SUCCESS;
+}
+
+extern int PS2_read_data(uint8_t **data, size_t size) {
+    int i;
+
+    for (i = 0; i < size; i++)
+        (*data)[i] = PS2_poll_read();
+
+    return EXIT_SUCCESS;
+}
+
+extern int PS2_write(uint8_t c) {
+    PS2_poll_write(c);
+    return EXIT_SUCCESS;
+}
+
+extern uint8_t PS2_read() {
+    return PS2_poll_read();
 }
