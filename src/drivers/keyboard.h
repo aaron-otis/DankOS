@@ -1,9 +1,33 @@
 #ifndef _KEYBOARD_H
 #define _KEYBOARD_H
 
+#include "stdint.h"
+#include "../lib/stdlib.h"
+#include "../lib/string.h"
+#include "ps2.h"
+
+extern int KB_init();
+extern int KB_reset();
+extern int KB_set_scan_code(uint8_t code);
+extern int KB_get_scan_code();
+extern int KB_enable();
+extern int KB_disable();
+extern int KB_set_default_params();
+extern uint8_t KB_resend();
+extern int KB_wait_for_scan_code();
+
+extern int KB_set_lights(uint8_t code);
+extern int KB_set_rate(uint8_t rate);
+extern int KB_get_rate();
+extern int KB_set_delay(uint8_t delay);
+extern int KB_get_delay();
+extern int KB_set_all_keys_type(int type);
+extern int KB_set_key_type(int scan_code, int type);
+
 /* Commands. */
 #define KB_SET_LEDS 0xED
 #define KB_ECHO 0xEE
+#define KB_QUEUE_SIZE 64
 
 #define KB_GET_SET_SCAN_CODE 0xF0
 #define KB_GET_SCAN_CODE 0x0
