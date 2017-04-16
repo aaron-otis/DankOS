@@ -54,6 +54,8 @@ used to test if the driver will correctly scroll the screen.";
     VGA_clear();
     */
 
+    printk("\nCursor position: %d\n", VGA_get_cur_pos());
+    printk("Buffer position: %d\n", VGA_get_buf_pos());
 }
 
 void stdio_tests() {
@@ -82,12 +84,17 @@ void stdio_tests() {
 
     printk("Testing pointer 0x123: %p\n", (void *) 0x123);
     printk("Testing pointer &test: %p\n", &test);
-    printk("Cursor position: %d\n", VGA_get_cur_pos());
-    printk("Buffer position: %d\n", VGA_get_buf_pos());
 }
 
 void ps2_tests() {
 }
 
 void keyboard_tests() {
+}
+
+void run_all_tests() {
+    vga_driver_tests();
+    stdio_tests();
+    ps2_tests();
+    keyboard_tests();
 }
