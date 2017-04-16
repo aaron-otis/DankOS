@@ -2,6 +2,8 @@
 #define _PS2_H
 
 #include "../lib/stdlib.h"
+#include "../lib/stdint.h"
+#include "../lib/stdio.h"
 #include <stddef.h>
 #include "io.h"
 
@@ -78,5 +80,14 @@ extern int PS2_read_data(uint8_t **data, size_t size);
 #define PS2_UNKNOWN_2 (1 << 5)
 #define PS2_TIME_OUT (1 << 6) /* 1 for a timeout error, 0 otherwise. */
 #define PS2_PARITY_ERR (1 << 7) /* 1 for parity error, 0 otherwise. */
+
+/* Test return values. */
+#define PS2_SELF_TEST_PASS 0x55
+#define PS2_SELF_TEST_FAIL 0xFC
+#define PS2_PORT_TEST_PASS 0x00
+#define PS2_PORT_CLOCK_LOW 0x01
+#define PS2_PORT_CLOCK_HIGH 0x02
+#define PS2_PORT_DATA_LOW 0x03
+#define PS2_PORT_DATA_HIGH 0x04
 
 #endif
