@@ -2,6 +2,7 @@
 #include "kernel_tests.h"
 #include "lib/debug.h"
 #include "init.h"
+#include "sh.h"
 
 static void halt_cpu() {
 
@@ -22,7 +23,8 @@ int kernel_main() {
      * Run kernel tests. 
      */
 
-    //run_all_tests();
+    run_all_tests();
+    shell();
 
     /* Halt CPU at end for testing. */
     halt_cpu();
