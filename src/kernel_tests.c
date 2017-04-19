@@ -60,28 +60,45 @@ used to test if the driver will correctly scroll the screen.";
 
 void stdio_tests() {
     char *str = "test string";
-    unsigned long test = 123;
-    int i;
+    short smin = SHRT_MIN, smax = SHRT_MAX;
+    unsigned short usmin = SHRT_MIN, usmax = USHRT_MAX;
+    int i, imin = INT_MIN, imax = INT_MAX;
+    unsigned int uimin = INT8_MIN, uimax = UINT_MAX;
+    long lmin = LONG_MIN, lmax = LONG_MAX;
+    unsigned long ulmin = LONG_MIN, ulmax = ULONG_MAX, test = 123;
 
     VGA_set_attr(VGA_BRIGHT_MAGENTA, VGA_BLACK, 0);
 
     /* Testing various parameters of printk. */
     printk("\n\nBeginning printk tests...\n");
+
+    /* Test printing characters and strings. */
     printk("Printing the character 'a': %c\nPrinting the test string: %s\n", 
      'a', str);
-    printk("Printing the unsigned integer 123: %lu\n", test);
-    printk("Testing literal unsigned integer 456: %u\n", 456);
-    printk("Testing pointer cast to unsigned long int: %lu\n", (unsigned long) 
-     &test);
 
+    /* Test printing shorts. */
+    printk("Testing SHRT_MIN: %hd\nTesting SHRT_MAX: %hd\n", smin, smax);
+    printk("Testing unsigned SHRT_MIN: %hu\n", usmin);
+    printk("Testing unsigned USHRT_MAX: %hu\n\n", usmax);
+
+    /* Test printing integerss. */
+    printk("Testing INT_MIN: %d\nTesting INT_MAX: %d\n", imin, imax);
+    printk("Testing unsigned INT_MIN: %u\n", imin);
+    printk("Testing unsigned UINT_MAX: %u\n", imax);
     printk("Testing literal integer -789: %d\n", -789);
-    printk("Testing literal integer 123 (0x7B) in hex: %x\n", 123);
+
+    /* Test hex printing. */
     printk("Testing literal integer 0xDEADBEEF in hex: %x\n", 0xDEADBEEF);
     printk("Testing pointer converted to hex: %lx\n", (unsigned long) &test);
-    for (i = 0; i < 33; i++)
-        printk("%x ", i);
-    printk("\n");
 
+    /* Test printing longs. */
+    printk("Testing LONG_MIN: %lu\nTesting LONG_MIN: %lu\n", lmin, lmax);
+    printk("Testing unsigned LONG_MIN: %lu\n", ulmin);
+    printk("Testing unsigned ULONG_MAX: %lu\n", ulmax);
+    printk("Testing literal integer -1: %u\n", -1);
+    printk("Testing literal unsigned integer 456: %u\n", 456);
+
+    /* Test printing pointers. */
     printk("Testing pointer 0x123: %p\n", (void *) 0x123);
     printk("Testing pointer &test: %p\n", &test);
 }
@@ -93,7 +110,7 @@ void keyboard_tests() {
 }
 
 void run_all_tests() {
-    vga_driver_tests();
+    //vga_driver_tests();
     stdio_tests();
     ps2_tests();
     keyboard_tests();
