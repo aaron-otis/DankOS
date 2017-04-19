@@ -1,20 +1,43 @@
 #ifndef _KEYBOARD_H
 #define _KEYBOARD_H
 
-#include "stdint.h"
+#include "../lib/stdint.h"
 #include "../lib/stdlib.h"
 #include "../lib/string.h"
+#include "../lib/stdio.h"
 #include "ps2.h"
+#include "kb_scancodes.h" /* Scan codes. */
+
+#define KEY_L_SHIFT 0xF0
+#define KEY_R_SHIFT 0xF1
+#define KEY_L_CTRL 0xF2
+#define KEY_R_CTRL 0xF3
+#define KEY_L_ALT 0xF4
+#define KEY_R_ALT 0xF5
+
+#define KEY_CAPS_LOCK 0xF6
+#define KEY_NUM_LOCK 0xF7
+#define KEY_SCROLL_LOCK 0xF8
+#define KEY_PRESSED 1
+#define KEY_RELEASED 0
+
+typedef struct keypress {
+    uint32_t codepoint; /* Unicode code point. */
+    uint8_t keycode; /* Key code for particular key. */
+    uint8_t pressed; /* 1 for key pressed, 0 for key released. */
+    uint8_t modifiers; /* Shift, control, alt, etc. */
+    uint8_t toggles; /* Capslock, numlock, etc. */
+} keypress;
 
 extern int KB_init();
 extern int KB_reset();
 extern int KB_set_scan_code(uint8_t code);
-extern int KB_get_scan_code();
+extern uint8_t KB_get_scan_code();
 extern int KB_enable();
 extern int KB_disable();
 extern int KB_set_default_params();
 extern uint8_t KB_resend();
-extern int KB_wait_for_scan_code();
+extern keypress KB_wait_for_scan_code();
 
 extern int KB_set_lights(uint8_t code);
 extern int KB_set_rate(uint8_t rate);
@@ -66,6 +89,12 @@ extern int KB_set_key_type(int scan_code, int type);
 #define KB_RESEND_CMD 0xFE
 #define KB_KEY_DETECT_ERROR_2 0xFF
 
-/* Scan codes. */
+/* Return values. */
+#define KB_INVALID_SCAN_CODE -1
+#define KB_TIMEOUT_EXCEEDED -2
+
+/* Key modifiers. */
+#define KB_CAPITAL_SHIFT -0x20
+#define KB_KEY_RELEASE_OFFSET 0x80
 
 #endif
