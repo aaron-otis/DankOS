@@ -98,11 +98,11 @@ extern int PS2_init(void) {
     PS2_poll_write(PS2_STATUS, PS2_READ_ZBYTE);
     config = PS2_poll_read(PS2_DATA);  /* Read current configuration. */
 
-    /* Enable port 1 interrupt and clock. */
-    config |= PS2_PORT_1_INTERRUPT | PS2_PORT_1_CLOCK;
-
     /* Check if single or dual channel. */
     dual_chan = config & PS2_PORT_2_CLOCK;
+
+    /* Enable port 1 interrupt and clock. */
+    config |= PS2_PORT_1_INTERRUPT | PS2_PORT_1_CLOCK;
 
     /* Write new configuration to controller. */
     PS2_poll_write(PS2_STATUS, config);
@@ -176,4 +176,9 @@ extern int PS2_write(uint8_t c) {
 
 extern uint8_t PS2_read() {
     return PS2_poll_read(PS2_DATA);
+}
+
+extern int PS2_send_command(uint8_t c) {
+    PS2_poll_write(PS2_STATUS, c);
+    return EXIT_SUCCESS;
 }

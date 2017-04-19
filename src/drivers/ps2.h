@@ -15,6 +15,7 @@ extern int PS2_write(uint8_t c);
 extern uint8_t PS2_read();
 extern int PS2_write_data(uint8_t *data, size_t size);
 extern int PS2_read_data(uint8_t **data, size_t size);
+extern int PS2_send_command(uint8_t c);
 
 #define PS2_DATA 0x60
 #define PS2_COMMAND 0x64
