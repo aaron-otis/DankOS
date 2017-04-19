@@ -3,6 +3,7 @@
 
 #include <limits.h>
 #include "../lib/stdlib.h"
+#include "../lib/stdint.h"
 
 /* Buffer constants. */
 #define VGA_ADDR 0xB8000
@@ -39,5 +40,8 @@ extern void VGA_display_str(const char *s);
 extern int VGA_set_cursor_pos(int pos);
 extern int VGA_get_cur_pos();
 extern int VGA_get_buf_pos();
+extern void VGA_disable_cursor();
+extern void VGA_enable_cursor(char fg, char bg, char blink);
+extern void VGA_backspace();
 
 #endif

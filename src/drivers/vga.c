@@ -7,11 +7,20 @@
 #define VGA_BUF_LEN (SCREEN_WIDTH * SCREEN_HEIGHT)
 #define VGA_BG_SHIFT 4
 #define VGA_BLINK_SHIFT 7
+#define LOWER_MASK 0xFF
+
+typedef struct {
+    uint8_t fg:4;
+    uint8_t bg:3;
+    uint8_t blink:1;
+} attributes;
 
 static int buffer_pos;
 static int cursor_pos;
-static unsigned short *vga_buff = VGA_PTR;
-static unsigned char attributes;
+static uint16_t *vga_buff = VGA_PTR;
+static attributes text_attr;
+static attributes cursor_attr;
+
 
 static int scroll_screen() {
     int i;
@@ -36,14 +45,21 @@ static int scroll_screen() {
 
 extern int VGA_set_attr(char fg, char bg, char blink) {
 
-    attributes = (blink << VGA_BLINK_SHIFT) | (bg << VGA_BG_SHIFT) | fg;
+    //attributes = (blink << VGA_BLINK_SHIFT) | (bg << VGA_BG_SHIFT) | fg;
+    text_attr.blink = blink;
+    text_attr.fg = fg;
+    text_attr.bg = bg;
 
-    return attributes >= 0;
+    cursor_attr.blink = 0;
+    cursor_attr.fg = ~fg;
+    cursor_attr.bg = ~bg;
+
+    return EXIT_SUCCESS;
 }
 
 extern char VGA_get_attr() {
 
-    return attributes;
+    return *(char *) &text_attr;
 }
 
 extern void VGA_clear(void) {
@@ -63,8 +79,8 @@ extern void VGA_display_char(char c) {
     
     if (c == NEWLINE) { /* Handle a newline character. */
         /* Clear cursor attributes. */
-        vga_buff[buffer_pos] = attributes << CHAR_BIT;
-        vga_buff[cursor_pos] = attributes << CHAR_BIT;
+        vga_buff[buffer_pos] = (*(char *) &text_attr) << CHAR_BIT;
+        vga_buff[cursor_pos] = (*(char *) &text_attr) << CHAR_BIT;
 
         /* Advance to new position in the buffer. */
         buffer_pos += SCREEN_WIDTH - (buffer_pos % SCREEN_WIDTH);
@@ -72,7 +88,7 @@ extern void VGA_display_char(char c) {
     }
     else {
         /* Add character to the buffer. */
-        vga_buff[buffer_pos++] = (attributes << CHAR_BIT) | c;
+        vga_buff[buffer_pos++] = ((*(char *) &text_attr) << CHAR_BIT) | c;
         cursor_pos++;
     }
 
@@ -81,7 +97,7 @@ extern void VGA_display_char(char c) {
         scroll_screen();
 
     /* Set cursor attributes. */
-    vga_buff[cursor_pos] |= (~attributes) << CHAR_BIT;
+    vga_buff[cursor_pos] |= (*(char *) &cursor_attr) << CHAR_BIT;
 }
 
 /*
@@ -98,7 +114,8 @@ extern void VGA_display_str(const char *s) {
 extern int VGA_set_cursor_pos(int pos) {
 
     /* Clear cursor attributes. */
-    vga_buff[cursor_pos] |= attributes << CHAR_BIT;
+    vga_buff[cursor_pos] &= LOWER_MASK;
+    vga_buff[cursor_pos] |= (*(char *) &text_attr) << CHAR_BIT;
 
     if (pos > 0 && pos < VGA_BUF_LEN)
         cursor_pos = pos; /* Set new cursor position. */
@@ -106,7 +123,7 @@ extern int VGA_set_cursor_pos(int pos) {
         return EXIT_FAILURE;
 
     /* set cursor attributes. */
-    vga_buff[cursor_pos] |= (~attributes) << CHAR_BIT;
+    vga_buff[cursor_pos] |= (*(char *) &cursor_attr) << CHAR_BIT;
 
     return EXIT_SUCCESS;
 }
@@ -119,4 +136,26 @@ extern int VGA_get_cur_pos() {
 extern int VGA_get_buf_pos() {
 
     return buffer_pos;
+}
+
+extern void VGA_disable_cursor() {
+    *(char *) &cursor_attr = 0;
+    vga_buff[cursor_pos] &= LOWER_MASK;
+    vga_buff[cursor_pos] |= (*(char *) &text_attr) << CHAR_BIT;
+}
+
+extern void VGA_enable_cursor(char fg, char bg, char blink) {
+    cursor_attr.blink = blink;
+    cursor_attr.fg = fg;
+    cursor_attr.bg = bg;
+    vga_buff[cursor_pos] &= LOWER_MASK;
+    vga_buff[cursor_pos] |= (*(char *) &cursor_attr) << CHAR_BIT;
+}
+
+extern void VGA_backspace() {
+
+    if (buffer_pos % SCREEN_WIDTH) {
+        vga_buff[--buffer_pos] = ((*(char *) &text_attr) << CHAR_BIT) | 0;
+        VGA_set_cursor_pos(cursor_pos - 1);
+    }
 }
