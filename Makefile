@@ -73,7 +73,7 @@ build_objs:
 # compile c files
 build/arch/$(arch)/%.o: src/%.c
 	mkdir -p $(shell dirname $@)
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CFLAGS) -mno-red-zone $< -o $@
 	
 # compile assembly files
 build/arch/$(arch)/%.o: src/asm/%.asm
