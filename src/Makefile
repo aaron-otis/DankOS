@@ -1,5 +1,7 @@
 arch ?= x86_64
 build_dir := ../build/arch/$(arch)
+int_script := generate_interrupt_code.py
+
 driver_files := $(wildcard drivers/*.c) 
 driver_headers := $(wildcard drivers/*.h) 
 driver_object_files := $(patsubst drivers/%.c, $(build_dir)/drivers/%.o, $(driver_files))
@@ -15,17 +17,18 @@ CFLAGS = -Wall -g
 
 all: drivers libs
 
-drivers: $(driver_object_files)
+drivers: gen_code $(driver_object_files)
 
 $(build_dir)/drivers/%.o: drivers/%.c
 	mkdir -p $(shell dirname $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Link library object files into one object file.
 libs: $(lib_object_files)
-	#mkdir -p $(build_dir)/libs
-	#$(CC) $(CFLAGS) -o $(build_dir)/libs/libc-$(arch).o $(lib_object_files)
 
 $(build_dir)/libs/%.o: lib/%.c
 	mkdir -p $(shell dirname $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+gen_code: $(int_script)
+	@echo "Generating interrupt code."
+	@python $(int_script)
