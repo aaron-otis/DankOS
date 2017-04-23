@@ -18,6 +18,8 @@
 #define KEY_CAPS_LOCK 0xF6
 #define KEY_NUM_LOCK 0xF7
 #define KEY_SCROLL_LOCK 0xF8
+#define KEY_ESC 0xF9
+
 #define KEY_PRESSED 1
 #define KEY_RELEASED 0
 
@@ -97,5 +99,16 @@ extern int KB_set_key_type(int scan_code, int type);
 /* Key modifiers. */
 #define KB_CAPITAL_SHIFT -0x20
 #define KB_KEY_RELEASE_OFFSET 0x80
+
+#define L_SHIFT_PRESSED 1
+#define R_SHIFT_PRESSED (1 << 1)
+#define L_CTL_PRESSED (1 << 2)
+#define R_CTL_PRESSED (1 << 3)
+#define L_ALT_PRESSED (1 << 4)
+#define R_ALT_PRESSED (1 << 5)
+
+#define CAPS_LOCK_ON 1
+#define NUM_LOCK_ON (1 << 1)
+#define SCROLL_LOCK_ON (1 << 2)
 
 #endif

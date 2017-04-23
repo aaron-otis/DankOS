@@ -7,6 +7,8 @@
 #define QI_READ 0
 #define QI_WRITE 1
 
+#define LAST_KEY 0x46
+
 /* Global variables. */
 
 static struct {
@@ -18,6 +20,8 @@ static struct {
 static uint8_t cmd_queue[KB_QUEUE_SIZE];
 static uint8_t *queue_head;
 static uint8_t *queue_tail;
+static int modifiers_pressed;
+static int toggles_set;
 
 /* Static functions. */
 
@@ -190,6 +194,9 @@ extern uint8_t KB_get_scan_code(){
 extern int KB_init(){
     int res;
 
+    modifiers_pressed = 0;
+    toggles_set = 0;
+
     /* Reset keyboard. */
     res = KB_reset();
     if (res != EXIT_SUCCESS)
@@ -216,28 +223,78 @@ extern int KB_init(){
 extern keypress KB_get_keypress() {
     keypress key;
     uint8_t res;
+    char c;
 
-    key.modifiers = 0;
-    key.toggles = 0;
+    key.codepoint = 0; /* Zero this in case characters are not printable. */
     res = PS2_read();
 
-    /* Check for toggles and modifiers. */
-    while (res <= KEY_SCROLL_LOCK && res >= KEY_L_SHIFT) {
-        if (res <= KEY_R_ALT && res >= KEY_L_SHIFT) /* Modifiers. */
-            key.modifiers = res;
-        else if (res <= KEY_SCROLL_LOCK && res >= KEY_CAPS_LOCK) /* Toggles. */
-            key.toggles = res;
-
-        res = PS2_read();
-    }
-
-    key.codepoint = KB_code_set_1[res + 1]; /* Character key. */
 
     /* Check to see if key is released or pressed. */
     if (res - KB_KEY_RELEASE_OFFSET >= 0)
-        key.pressed = 1;
-    else
         key.pressed = 0;
+    else
+        key.pressed = 1;
+
+
+    if (res <= KB_KEY_RELEASE_OFFSET) {
+        /* Check for modifiers. */
+        if (KB_code_set_1[res] == KEY_L_SHIFT)
+            modifiers_pressed |= L_SHIFT_PRESSED;
+        else if (KB_code_set_1[res] == KEY_R_SHIFT)
+            modifiers_pressed |= R_SHIFT_PRESSED;
+        else if (KB_code_set_1[res] == KEY_L_CTRL)
+            modifiers_pressed |= L_CTL_PRESSED;
+        else if (KB_code_set_1[res] == KEY_R_CTRL)
+            modifiers_pressed |= R_CTL_PRESSED;
+        else if (KB_code_set_1[res] == KEY_L_ALT)
+            modifiers_pressed |= L_ALT_PRESSED;
+        else if (KB_code_set_1[res] == KEY_R_ALT)
+            modifiers_pressed |= R_ALT_PRESSED;
+        /* Check for toggles. */
+        else if (KB_code_set_1[res] == KEY_CAPS_LOCK)
+            toggles_set |= CAPS_LOCK_ON;
+        else if (KB_code_set_1[res] == KEY_NUM_LOCK)
+            toggles_set |= NUM_LOCK_ON;
+        else if (KB_code_set_1[res] == KEY_SCROLL_LOCK)
+            toggles_set |= SCROLL_LOCK_ON;
+    }
+    else {
+        res -= KB_KEY_RELEASE_OFFSET; /* Remove release offset. */
+
+        /* Check for modifiers. */
+        if (KB_code_set_1[res] == KEY_L_SHIFT)
+            modifiers_pressed &= ~L_SHIFT_PRESSED;
+        else if (KB_code_set_1[res] == KEY_R_SHIFT)
+            modifiers_pressed &= ~R_SHIFT_PRESSED;
+        else if (KB_code_set_1[res] == KEY_L_CTRL)
+            modifiers_pressed &= ~L_CTL_PRESSED;
+        else if (KB_code_set_1[res] == KEY_R_CTRL)
+            modifiers_pressed &= ~R_CTL_PRESSED;
+        else if (KB_code_set_1[res] == KEY_L_ALT)
+            modifiers_pressed &= ~L_ALT_PRESSED;
+        else if (KB_code_set_1[res] == KEY_R_ALT)
+            modifiers_pressed &= ~R_ALT_PRESSED;
+        /* Check for toggles. */
+        else if (KB_code_set_1[res] == KEY_CAPS_LOCK)
+            toggles_set &= ~CAPS_LOCK_ON;
+        else if (KB_code_set_1[res] == KEY_NUM_LOCK)
+            toggles_set &= ~NUM_LOCK_ON;
+        else if (KB_code_set_1[res] == KEY_SCROLL_LOCK)
+            toggles_set &= ~SCROLL_LOCK_ON;
+
+    }
+
+    /* Check if key pressed was a modifier. */
+    if (KB_code_set_1[res] >= KEY_L_SHIFT && KB_code_set_1[res] <= 
+     KEY_SCROLL_LOCK)
+        key.codepoint = 0;
+    else if (key.pressed) /* Otherwise it is a printable character. */
+        key.codepoint = KB_code_set_1[res];
+    else
+        key.codepoint = 0;
+
+    key.modifiers = modifiers_pressed;
+    key.toggles = toggles_set;
 
     return key;
 }
@@ -250,33 +307,6 @@ extern keypress KB_wait_for_scan_code() {
     res = PS2_read();
     key.codepoint = KB_code_set_1[res + 1];
     return key;
-    /*
-    while (1) {
-
-        if (KB_code_set_1[res] >= KEY_L_SHIFT && KB_code_set_1[res] <= 
-         KEY_R_ALT) {
-            key.modifiers = KB_code_set_1[res];
-            key.toggles = 0;
-            res = PS2_read();
-        }
-        else if (KB_code_set_1[res] >= KEY_CAPS_LOCK && KB_code_set_1[res] <= 
-         KEY_SCROLL_LOCK) {
-            key.toggles = KB_code_set_1[res];
-            key.modifiers = 0;
-            res = PS2_read();
-        }
-
-        if (res < KB_KEY_RELEASE_OFFSET) {
-            key.codepoint = KB_code_set_1[res];
-            key.pressed = KEY_PRESSED;
-        }
-        else {
-            key.codepoint = KB_code_set_1[res - KB_KEY_RELEASE_OFFSET];
-            key.pressed = KEY_RELEASED;
-        }
-
-    }
-    */
 }
 
 extern int KB_set_default_params(){
