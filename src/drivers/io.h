@@ -24,6 +24,8 @@ static inline uint8_t inb(uint16_t port) {
  * been received. 
  */
 static inline void io_wait(void) {
+
+    asm volatile ( "outb %%al, $0x80" : : "a"(0) );
 }
 
 #endif
