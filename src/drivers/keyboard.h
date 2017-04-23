@@ -37,6 +37,7 @@ extern int KB_enable();
 extern int KB_disable();
 extern int KB_set_default_params();
 extern uint8_t KB_resend();
+extern keypress KB_get_keypress();
 extern keypress KB_wait_for_scan_code();
 
 extern int KB_set_lights(uint8_t code);

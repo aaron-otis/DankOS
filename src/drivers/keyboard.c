@@ -213,10 +213,39 @@ extern int KB_init(){
     return EXIT_SUCCESS;
 }
 
+extern keypress KB_get_keypress() {
+    keypress key;
+    uint8_t res;
+
+    key.modifiers = 0;
+    key.toggles = 0;
+    res = PS2_read();
+
+    /* Check for toggles and modifiers. */
+    while (res <= KEY_SCROLL_LOCK && res >= KEY_L_SHIFT) {
+        if (res <= KEY_R_ALT && res >= KEY_L_SHIFT) /* Modifiers. */
+            key.modifiers = res;
+        else if (res <= KEY_SCROLL_LOCK && res >= KEY_CAPS_LOCK) /* Toggles. */
+            key.toggles = res;
+
+        res = PS2_read();
+    }
+
+    key.codepoint = KB_code_set_1[res + 1]; /* Character key. */
+
+    /* Check to see if key is released or pressed. */
+    if (res - KB_KEY_RELEASE_OFFSET >= 0)
+        key.pressed = 1;
+    else
+        key.pressed = 0;
+
+    return key;
+}
+
 extern keypress KB_wait_for_scan_code() {
     keypress key;
     uint8_t res;
-    int i;
+    //int i;
 
     res = PS2_read();
     key.codepoint = KB_code_set_1[res + 1];
