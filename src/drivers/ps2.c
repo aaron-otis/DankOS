@@ -105,7 +105,9 @@ extern int PS2_init(void) {
     config |= PS2_PORT_1_INTERRUPT | PS2_PORT_1_CLOCK;
 
     /* Write new configuration to controller. */
-    PS2_poll_write(PS2_STATUS, config);
+    PS2_poll_write(PS2_STATUS, PS2_WRITE_ZBYTE);
+    PS2_poll_write(PS2_DATA, config);
+
 
     res = PS2_self_test(); /* Perform controller self test. */
     if (res != PS2_SELF_TEST_PASS)
