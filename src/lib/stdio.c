@@ -164,12 +164,12 @@ static int print_str(char *str) {
 
 
 extern int printk(const char *fmt, ...) {
-    int i, len = 0, debug = 1;
+    int i, len = 0, debug = 1, fmt_len = strlen(fmt);
     va_list ap;
 
     va_start(ap, fmt);
 
-    for (i = 0; i < strlen(fmt); i++) {
+    for (i = 0; i < fmt_len; i++) {
         if (fmt[i] == FMT_DELIM) {
             i++;
 

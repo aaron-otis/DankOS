@@ -1,6 +1,7 @@
 #include "vga.h"
 #include "../lib/string.h"
 #include "../lib/stdio.h"
+#include "interrupts.h"
 
 #define NEWLINE '\n'
 #define VGA_PTR ((void *) VGA_ADDR)
@@ -76,6 +77,13 @@ extern int VGA_init(void) {
 }
 
 extern void VGA_display_char(char c) {
+    int ints_enabled = 0;
+
+    /* If interrupts are enabled, disable them. */
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
     
     if (c == NEWLINE) { /* Handle a newline character. */
         /* Clear cursor attributes. */
@@ -98,6 +106,9 @@ extern void VGA_display_char(char c) {
 
     /* Set cursor attributes. */
     vga_buff[cursor_pos] |= (*(char *) &cursor_attr) << CHAR_BIT;
+
+    if (ints_enabled) /* If interrupts were initially enabled, enable them. */
+        STI;
 }
 
 /*
