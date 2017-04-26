@@ -1,3 +1,13 @@
 *~
 *.bin
 *.old
+*.swp
+bin/*
+src/build_tools
+*.img
+share
+x86_64-elf
+.gdbinit
+include
+isr_wrapper.asm
+interrupt_externs.*
