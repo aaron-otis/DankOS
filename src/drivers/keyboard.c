@@ -299,16 +299,6 @@ extern keypress KB_get_keypress() {
     return key;
 }
 
-extern keypress KB_wait_for_scan_code() {
-    keypress key;
-    uint8_t res;
-    //int i;
-
-    res = PS2_read();
-    key.codepoint = KB_code_set_1[res + 1];
-    return key;
-}
-
 extern int KB_set_default_params(){
 }
 

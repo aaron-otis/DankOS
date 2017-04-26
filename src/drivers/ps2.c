@@ -174,8 +174,12 @@ extern int PS2_write(uint8_t c) {
     return EXIT_SUCCESS;
 }
 
-extern uint8_t PS2_read() {
+extern uint8_t PS2_polling_read() { /* Read via polling method. */
     return PS2_poll_read(PS2_DATA);
+}
+
+extern uint8_t PS2_read() { /* Read after interrupt called. */
+    return inb(PS2_DATA);
 }
 
 extern int PS2_send_command(uint8_t c) {

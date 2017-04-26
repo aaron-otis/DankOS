@@ -13,6 +13,7 @@ extern int PS2_disable_device(int dev);
 extern int PS2_reset_device(int dev);
 extern int PS2_write(uint8_t c);
 extern uint8_t PS2_read();
+extern uint8_t PS2_polling_read();
 extern int PS2_write_data(uint8_t *data, size_t size);
 extern int PS2_read_data(uint8_t **data, size_t size);
 extern int PS2_send_command(uint8_t c);
