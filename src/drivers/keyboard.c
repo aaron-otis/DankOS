@@ -1,4 +1,5 @@
 #include "keyboard.h"
+#include "interrupts.h"
 
 #define KB_TIMEOUT 3
 #define KB_DEFAULT_SCAN_CODE KB_SCAN_CODE_2
@@ -78,13 +79,21 @@ static int dequeue(uint8_t *item) {
 }
 
 static uint8_t resend_cmd(uint8_t code) {
-    int i, res;
+    int i, res, int_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        int_enabled = 1;
+        CLI;
+    }
 
     i = 0; /* Assumes one resend has already been sent. */
 
     /* Try to resend data three times if keyboard asks for a resend. */
-    while ((res = PS2_read()) == KB_RESEND_CMD && i++ < KB_TIMEOUT)
+    while ((res = PS2_polling_read()) == KB_RESEND_CMD && i++ < KB_TIMEOUT)
         PS2_write(code);
+
+    if (int_enabled)
+        STI;
 
     return res;
 }
@@ -98,7 +107,7 @@ static int exec_cmds() {
         res = PS2_write(cmd);
     }
 
-    res = PS2_read(); /* Check for ACK. */
+    res = PS2_polling_read(); /* Check for ACK. */
     if (res == KB_RESEND_CMD) { /* If keyboard is requesting a resend. */
         res = resend_cmd(cmd); /* Try to resend until timeout reached. */
 
@@ -112,100 +121,154 @@ static int exec_cmds() {
 /* External functions. */
 
 extern int KB_reset(){
-    int res;
+    int res, int_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        int_enabled = 1;
+        CLI;
+    }
 
     PS2_write(KB_RESET_TEST);
-    res = PS2_read();
+    res = PS2_polling_read(); /* Need to use polling read! */
+
     if (res == KB_RESEND_CMD) {
         PS2_write(KB_RESET_TEST);
-        res = PS2_read();
+        res = PS2_polling_read();
     }
-    if (res == KB_CMD_ACK) {
-        res = PS2_read();
+
+    if (res == KB_CMD_ACK) { /* Check that command was acknowledged. */
+        res = PS2_polling_read();
     }
-    else
+    else { /* Otherwise bail out. */
+        if (int_enabled)
+            STI;
         return res;
+    }
 
     if (res == KB_PASSED_SELF_TEST)
-        return EXIT_SUCCESS;
-    else
-        return res;
+        res = EXIT_SUCCESS;
+
+    if (int_enabled)
+        STI;
+
+    return res;
 }
 
 extern int KB_enable(){
-    int res;
+    int res, int_enabled = 0;
 
-    //queue(KB_ENABLE_SCANNING); /* Enable the keyboard. */
-    //res = exec_cmds();
+    if (are_interrupts_enabled()) {
+        int_enabled = 1;
+        CLI;
+    }
+
     PS2_write(KB_ENABLE_SCANNING);
-    res = PS2_read();
+    res = PS2_polling_read();
 
     if (res == KB_CMD_ACK)
-        return EXIT_SUCCESS;
-    else
-        return res;
+        res = EXIT_SUCCESS;
+
+    if (int_enabled)
+        STI;
+    return res;
 }
 
 extern int KB_disable(){
-    int res;
+    int res, int_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        int_enabled = 1;
+        CLI;
+    }
 
     queue(KB_DISABLE_SCANNING); /* Disable the keyboard. */
     res = exec_cmds();
 
     if (res == KB_CMD_ACK)
-        return EXIT_SUCCESS;
-    else
-        return res;
+        res = EXIT_SUCCESS;
+
+    if (int_enabled)
+        STI;
+    return res;
 }
 
 extern int KB_set_scan_code(uint8_t code){
-    int res;
+    int res, int_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        int_enabled = 1;
+        CLI;
+    }
 
     /* Check for valid scan codes. */
-    if (code > KB_SCAN_CODE_3 || code < KB_SCAN_CODE_1)
+    if (code > KB_SCAN_CODE_3 || code < KB_SCAN_CODE_1) {
+        if (int_enabled)
+            STI;
         return KB_INVALID_SCAN_CODE;
+    }
 
-    /* Add commands to queue. */
     PS2_write(KB_GET_SET_SCAN_CODE);
-    res = PS2_read();
+    res = PS2_polling_read();
     PS2_write(code);
-    res = PS2_read();
+    res = PS2_polling_read();
 
     if (res == KB_CMD_ACK) /* Keyboard successfully received code. */
-        return EXIT_SUCCESS;
+        res = EXIT_SUCCESS;
     else
-        return EXIT_FAILURE;
+        res = EXIT_FAILURE;
+
+    if (int_enabled)
+        STI;
+
+    return res;
 }
 
 extern uint8_t KB_get_scan_code(){
-    int res;
+    int res, int_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        int_enabled = 1;
+        CLI;
+    }
 
     PS2_write(KB_GET_SET_SCAN_CODE);
-    res = PS2_read();
-    PS2_write(KB_GET_SCAN_CODE);
-    res = PS2_read();
+    res = PS2_polling_read();
 
     if (res == KB_CMD_ACK) /* Keyboard successfully received code. */
-        return PS2_read(); /* Return scan code. */
-    else /* Keyboard did not receive or does not support the code. */
-        return res;
+        res= PS2_polling_read(); /* Return scan code. */
+
+    if (int_enabled)
+        STI;
+    return res;
 }
 
 extern int KB_init(){
-    int res;
+    int res, int_enabled = 0, debug = 1;
+
+    if (are_interrupts_enabled()) {
+        int_enabled = 1;
+        CLI;
+    }
 
     modifiers_pressed = 0;
     toggles_set = 0;
 
+
     /* Reset keyboard. */
     res = KB_reset();
-    if (res != EXIT_SUCCESS)
+    if (res != EXIT_SUCCESS) {
+        if (int_enabled)
+            STI;
         return res;
+    }
 
     /* Set keyboard to a known scan code. */
     res = KB_set_scan_code(KB_DEFAULT_SCAN_CODE); /* Default scan code. */
-    if (res != EXIT_SUCCESS)
+    if (res != EXIT_SUCCESS) {
+        if (int_enabled)
+            STI;
         return res;
+    }
 
     /* 
      * Will need to check what scan code set is actually being used since
@@ -214,8 +277,14 @@ extern int KB_init(){
 
     /* Enable keyboard. */
     res = KB_enable();
-    if (res != EXIT_SUCCESS)
+    if (res != EXIT_SUCCESS) {
+        if (int_enabled)
+            STI;
         return res;
+    }
+
+    if (int_enabled)
+        STI;
 
     return EXIT_SUCCESS;
 }
@@ -226,7 +295,7 @@ extern keypress KB_get_keypress() {
     char c;
 
     key.codepoint = 0; /* Zero this in case characters are not printable. */
-    res = PS2_read();
+    res = PS2_read(); /* Use interrupt driven function. */
 
 
     /* Check to see if key is released or pressed. */
