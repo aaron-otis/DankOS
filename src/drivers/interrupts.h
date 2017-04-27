@@ -2,7 +2,6 @@
 #define _INTERRUPTS_H
 
 #include "../lib/stdint.h"
-#include "interrupt_tables.h"
 
 #define IDT_SIZE 256
 
