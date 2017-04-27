@@ -6,5 +6,6 @@
 #include "keyboard.h"
 #include "pic.h"
 #include "interrupts.h"
+#include "serial.h"
 
 #endif
