@@ -32,7 +32,6 @@ static void kb_interrupt_handler(int irq, int error, void *arg) {
     keypress kp;
 
     kp = KB_get_keypress(); /* Get key pressed. */
-    IRQ_end_of_interrupt(irq); /* Signal EOI. */
 
     if (kp.codepoint)
         printk("%c", kp.codepoint); /* Print character. */
@@ -52,9 +51,11 @@ extern int IRQ_get_mask(int IRQline) {
 
 extern void IRQ_handler(int irq, int error) {
 
-    if (irq >= 0 && irq < IDT_SIZE)
-        if (interrupt_table[irq].handler)
+    if (irq >= 0 && irq < IDT_SIZE) /* Ensure IRQ is within bounds. */
+        if (interrupt_table[irq].handler) /* Check for null pointer. */
             interrupt_table[irq].handler(irq, error, interrupt_table[irq].arg);
+
+    IRQ_end_of_interrupt(irq); /* Signal EOI. */
 }
 
 extern void IRQ_init(void) {
@@ -72,8 +73,6 @@ extern void IRQ_init(void) {
     __asm__("lidt %0" : : "m"(idtr));
 
     PIC_clear_mask(1);
-    //while (debug); /* Infinite loop for debugging. */
-    STI; /* Enable interrupts. */
 
     /* Populate interrupt_table with function pointers. */
     for (i = 0; i < IDT_SIZE; i++) {
@@ -85,5 +84,5 @@ extern void IRQ_init(void) {
     /* Set keyboard interrupt handler. */
     interrupt_table[1].handler = kb_interrupt_handler;
     interrupt_table[0x21].handler = kb_interrupt_handler;
-    asm("int $0x21"); /* Check if interrupts work! */
+
 }
