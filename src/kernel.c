@@ -19,13 +19,6 @@ int kernel_main() {
     if (init() == EXIT_FAILURE)
         halt_cpu();
 
-    /* 
-     * Run kernel tests. 
-     */
-
-    run_all_tests();
-    shell();
-
     /* Halt CPU at end for testing. */
     halt_cpu();
 
