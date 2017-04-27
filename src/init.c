@@ -46,6 +46,10 @@ extern int init() {
     }
     printk("Keyboard ");
 
+    /* Initialize serial driver. */
+    SER_init();
+    printk("Serial ");
+
     STI;
 
     /* Test page fault interrupt. */
