@@ -202,48 +202,49 @@ extern int printk(const char *fmt, ...) {
                 
                 case INT_DELIM:
                     if (modifier == SHORT_ARG)
-                        print_int(va_arg(ap, int));
+                        len += print_int(va_arg(ap, int));
                     else if (modifier == LONG_ARG)
-                        print_int(va_arg(ap, long int));
+                        len += print_int(va_arg(ap, long int));
                     else if (modifier == QUAD_ARG)
-                        print_int(va_arg(ap, long long int));
+                        len += print_int(va_arg(ap, long long int));
                     else
-                        print_int(va_arg(ap, int));
+                        len += print_int(va_arg(ap, int));
                     break;
 
                 case UINT_DELIM:
                     if (modifier == SHORT_ARG)
-                        print_uint(va_arg(ap, unsigned int));
+                        len += print_uint(va_arg(ap, unsigned int));
                     else if (modifier == LONG_ARG)
-                        print_uint(va_arg(ap, unsigned long int));
+                        len += print_uint(va_arg(ap, unsigned long int));
                     else if (modifier == QUAD_ARG)
-                        print_uint(va_arg(ap, unsigned long long int));
+                        len += print_uint(va_arg(ap, unsigned long long int));
                     else
-                        print_uint(va_arg(ap, unsigned int));
+                        len += print_uint(va_arg(ap, unsigned int));
 
                     break;
 
                 case HEX_DELIM:
                     if (modifier == SHORT_ARG)
-                        print_hex(va_arg(ap, unsigned int));
+                        len += print_hex(va_arg(ap, unsigned int));
                     else if (modifier == LONG_ARG)
-                        print_hex(va_arg(ap, unsigned long int));
+                        len += print_hex(va_arg(ap, unsigned long int));
                     else if (modifier == QUAD_ARG)
-                        print_hex(va_arg(ap, unsigned long long int));
+                        len += print_hex(va_arg(ap, unsigned long long int));
                     else
-                        print_hex(va_arg(ap, unsigned int));
+                        len += print_hex(va_arg(ap, unsigned int));
                     break;
 
                 case CHAR_DELIM:
                     print_char(va_arg(ap, int));
+                    len++;
                     break;
 
                 case PTR_DELIM:
-                    print_ptr(va_arg(ap, void *));
+                    len += print_ptr(va_arg(ap, void *));
                     break;
 
                 case STR_DELIM:
-                    print_str(va_arg(ap, char *));
+                    len += print_str(va_arg(ap, char *));
                     break;
 
                 default:
@@ -252,6 +253,7 @@ extern int printk(const char *fmt, ...) {
         }
         else {
             print_char(fmt[i]);
+            len++;
         }
     }
 
