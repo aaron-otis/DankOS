@@ -53,7 +53,7 @@ def main():
 
         # Put error code into rsi as second paramter, if an error code exists.
         if i in has_error:
-            f.write("\tjmp [common_irq_handler + 8]\n")
+            f.write("\tjmp common_irq_handler + 1\n")
         else:
             f.write("\tjmp common_irq_handler\n")
 
