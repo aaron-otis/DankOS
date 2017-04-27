@@ -1,13 +1,13 @@
 #include "init.h"
 
 extern int init() {
-    int res;
+    int res, debug = 1;
 
-    IRQ_init(); /* Initialize interrupts. */
 
     /* 
      * Initialize drivers. 
      */
+    CLI;
 
     /* Initialize VGA driver. */
     if (VGA_init() == EXIT_FAILURE)
@@ -36,7 +36,8 @@ extern int init() {
     printk("PS2 ");
 
     /* Initialize keyboard driver. */
-    if ((res = KB_init()) != EXIT_SUCCESS) {
+    res = KB_init();
+    if (res != EXIT_SUCCESS) {
         VGA_set_attr(VGA_WHITE, VGA_RED, 0);
 
         printk("Keyboard initialization failure. ");
@@ -44,6 +45,15 @@ extern int init() {
         return res;
     }
     printk("Keyboard ");
+
+    STI;
+
+    /* Test page fault interrupt. */
+    /*
+    int *p = (int *) 0xFFFFFFFFFFFFFFFF;
+    while (debug);
+    *p = 0;
+    */
 
     printk("\ndone\n");
     return EXIT_SUCCESS;
