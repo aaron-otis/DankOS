@@ -17,7 +17,7 @@
 #define PIC_NUM_IRQS 8
 
 #define ICW1_LTIM (1 << 3)
-#define ICW1_INIT (1 << 5)
+#define ICW1_INIT 0x10
 #define ICW1_IC4 0x1
 #define ICW4_8086_mode 0x1
 
@@ -111,21 +111,17 @@ int PIC_init(void) {
     /*
     for (i = 0; i < PIC_MASTER_OFFSET + PIC_NUM_IRQS * 2; i++)
         PIC_clear_mask(i);
-        */
+    */
     for (i = 0; i < IDT_SIZE; i++ )
         PIC_set_mask(i);
-
-    //PIC_clear_mask(0x21);
-    //PIC_clear_mask(0x24);
-    //PIC_clear_mask(0x1);
-    //PIC_clear_mask(0x4);
 
     return EXIT_SUCCESS;
 }
 
 void PIC_sendEOI(uint8_t irq) { /* Send EOI to PIC controllers. */
+    irq -= PIC_MASTER_OFFSET;
 
-    if (irq >= PIC_MASTER_OFFSET)
+    if (irq >= PIC_NUM_IRQS)
         outb(PIC_SLAVE_CMD, PIC_EOI);
 
     outb(PIC_MASTER_CMD, PIC_EOI);
