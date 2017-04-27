@@ -24,8 +24,13 @@ static attributes cursor_attr;
 
 
 static int scroll_screen() {
-    int i;
+    int i, ints_enabled = 0;
     void *last_line = vga_buff + VGA_BUF_LEN - SCREEN_WIDTH;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
 
     /* Copy everything SCREEN_WIDTH bytes back. */
     for (i = SCREEN_WIDTH; i < VGA_BUF_LEN; i++)
@@ -40,6 +45,9 @@ static int scroll_screen() {
     /* Set buffer and cursor positions to new positions. */
     buffer_pos -= SCREEN_WIDTH;
     cursor_pos -= SCREEN_WIDTH;
+
+    if (ints_enabled)
+        STI;
 
     return EXIT_SUCCESS;
 }
