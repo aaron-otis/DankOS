@@ -79,6 +79,7 @@ def main():
     # Write includes first.
     f.write('#include "{}"\n'.format(header_file[8:]))
     f.write('#include "../lib/stdint.h"\n')
+    f.write('#include "../gdt.h"\n\n')
 
     # Write defines next.
     f.write("#define OFF_1_MASK 0xFFFF\n")
