@@ -2,6 +2,7 @@
 #include "interrupt_externs.h"
 #include "../lib/string.h"
 #include "../lib/stdio.h"
+#include "../gdt.h"
 #include "pic.h"
 #include "keyboard.h"
 
@@ -15,35 +16,10 @@ struct IDTR {
     void *base;
 } __attribute__((packed));
 
-struct TSS_selector {
-    uint16_t rpi:2; /* Privilege level (CPL). */
-    uint16_t ti:1; /* Must be 0 to indicate the GDT is used. */
-    uint16_t index:13;
-};
-
-struct TSS {
-    uint32_t reserved1;
-    uint64_t rsp0;
-    uint64_t rsp1;
-    uint64_t rsp2;
-    uint64_t reserved2;
-    uint64_t ist1;
-    uint64_t ist2;
-    uint64_t ist3;
-    uint64_t ist4;
-    uint64_t ist6;
-    uint64_t ist7;
-    uint64_t reserved3;
-    uint16_t reserved4;
-    uint16_t base;
-};
-
 /* Table of interrupt functions */
 static struct IRQT interrupt_table[IDT_SIZE];
 ID IDT[IDT_SIZE]; /* Interrupt descriptor table. */
 struct IDTR idtr;
-static struct TSS tss;
-static struct TSS_selector tss_sel;
 
 extern void IRQ_end_of_interrupt(int irq) {
 
@@ -89,11 +65,6 @@ extern void IRQ_init(void) {
         interrupt_table[i].arg = NULL;
     }
 
-    /* Set up TSS. */
-    memset(&tss, 0, sizeof(tss));
-    tss_sel.rpi = 0;
-    tss_sel.ti = 0;
-    
 }
 
 extern int IRQ_set_handler(int irq, irq_handler_t handler, void *arg) {
