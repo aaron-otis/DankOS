@@ -15,9 +15,35 @@ struct IDTR {
     void *base;
 } __attribute__((packed));
 
-static struct IRQT interrupt_table[IDT_SIZE]; /* Table of interrupt functions */
+struct TSS_selector {
+    uint16_t rpi:2; /* Privilege level (CPL). */
+    uint16_t ti:1; /* Must be 0 to indicate the GDT is used. */
+    uint16_t index:13;
+};
+
+struct TSS {
+    uint32_t reserved1;
+    uint64_t rsp0;
+    uint64_t rsp1;
+    uint64_t rsp2;
+    uint64_t reserved2;
+    uint64_t ist1;
+    uint64_t ist2;
+    uint64_t ist3;
+    uint64_t ist4;
+    uint64_t ist6;
+    uint64_t ist7;
+    uint64_t reserved3;
+    uint16_t reserved4;
+    uint16_t base;
+};
+
+/* Table of interrupt functions */
+static struct IRQT interrupt_table[IDT_SIZE];
 ID IDT[IDT_SIZE]; /* Interrupt descriptor table. */
 struct IDTR idtr;
+static struct TSS tss;
+static struct TSS_selector tss_sel;
 
 extern void IRQ_end_of_interrupt(int irq) {
 
@@ -26,21 +52,6 @@ extern void IRQ_end_of_interrupt(int irq) {
 
 static void unhandled_interrupt(int irq, int error, void *arg) {
     printk("Interrupt %d is not handled yet...\n", irq);
-}
-
-static void kb_interrupt_handler(int irq, int error, void *arg) {
-    keypress kp;
-
-    kp = KB_get_keypress(); /* Get key pressed. */
-
-    if (kp.codepoint)
-        printk("%c", kp.codepoint); /* Print character. */
-}
-
-extern void IRQ_set_mask(int irq) {
-}
-
-extern void IRQ_clear_mask(int irq) {
 }
 
 extern int IRQ_get_mask(int IRQline) {
@@ -59,7 +70,7 @@ extern void IRQ_handler(int irq, int error) {
 }
 
 extern void IRQ_init(void) {
-    int i, debug = 1;
+    int i;
 
     /* Set up IDT table. */
     memset(IDT, 0, sizeof(ID) * IDT_SIZE); /* Zero IDT table. */
@@ -72,17 +83,27 @@ extern void IRQ_init(void) {
     /* Use lidt asm instruction to set the IDT table. */
     __asm__("lidt %0" : : "m"(idtr));
 
-    PIC_clear_mask(1);
-
-    /* Populate interrupt_table with function pointers. */
+    /* Populate interrupt_table with pointers to unhandled_interrupt. */
     for (i = 0; i < IDT_SIZE; i++) {
         interrupt_table[i].handler = unhandled_interrupt;
         interrupt_table[i].arg = NULL;
     }
 
+    /* Set up TSS. */
+    memset(&tss, 0, sizeof(tss));
+    tss_sel.rpi = 0;
+    tss_sel.ti = 0;
+    
+}
 
-    /* Set keyboard interrupt handler. */
-    interrupt_table[1].handler = kb_interrupt_handler;
-    interrupt_table[0x21].handler = kb_interrupt_handler;
+extern int IRQ_set_handler(int irq, irq_handler_t handler, void *arg) {
+    int ret = EXIT_FAILURE;
 
+    if (irq >= 0 && irq < IDT_SIZE) {
+        interrupt_table[irq].handler = handler;
+        interrupt_table[irq].arg = arg;
+        ret = EXIT_SUCCESS;
+    }
+
+    return ret;
 }
