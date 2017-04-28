@@ -4,15 +4,16 @@
 #include "../lib/stdint.h"
 
 #define IDT_SIZE 256
+#define TSS_TYPE 0x9
+#define TSS_GRANULARITY 0
+#define PAGE_SIZE 4096
 
 extern void IRQ_init(void);
-extern void IRQ_set_mask(int irq);
-extern void IRQ_clear_mask(int irq);
 extern int IRQ_get_mask(int IRQline);
 extern void IRQ_end_of_interrupt(int irq);
 
 typedef void (*irq_handler_t)(int, int, void *);
-extern void IRQ_set_handler(int irq, irq_handler_t handler, void *arg);
+extern int IRQ_set_handler(int irq, irq_handler_t handler, void *arg);
 
 static inline int are_interrupts_enabled() {
     unsigned long flags;
@@ -35,6 +36,25 @@ typedef struct {
     uint32_t offset3;
     uint32_t reserved2;
 } __attribute__ ((packed)) ID; /* Interrupt descriptor. */
+
+typedef struct {
+    uint16_t limit;
+    uint16_t base1;
+    uint16_t base2:8;
+    uint16_t type:4;
+    uint16_t zero:1;
+    uint16_t dpl:2;
+    uint16_t present:1;
+    uint16_t segment_limit:4;
+    uint16_t avl:1;
+    uint16_t reserved1:2;
+    uint16_t granularity:1;
+    uint16_t base3:8;
+    uint32_t reserved2;
+    uint32_t reserved3:8;
+    uint32_t legacy:5;
+    uint32_t reserved4:19;
+} __attribute__ ((packed)) TD; /* TSS descriptor. */
 
 extern ID IDT[IDT_SIZE]; /* Interrupt descriptor table. */
 extern struct IDTR idtr;
