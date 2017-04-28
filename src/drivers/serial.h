@@ -3,16 +3,20 @@
 
 #include "../lib/stdint.h"
 
-#define UART_BUF_SIZE 1024
+#define UART_BUF_SIZE 32
+#define HW_BUF_IDLE 0
+#define HW_BUF_BUSY 1
 
 struct UART {
-    uint8_t buf[UART_BUF_SIZE];
+    uint8_t buff[UART_BUF_SIZE];
     uint8_t *head;
     uint8_t *tail;
+    uint8_t hw_buf_status;
 };
 
 extern void SER_init(void);
 extern int SER_write(const char *buff, int len);
+extern int SER_putc(uint8_t c);
 extern void SER_int_handler(int irq, int error, void *arg);
 
 /* COM ports. */
