@@ -4,6 +4,7 @@
 #include "string.h"
 #include "types.h"
 #include "../drivers/vga.h"
+#include "../drivers/serial.h"
 
 #define LONG_ARG 1
 #define SHORT_ARG 2
@@ -40,8 +41,10 @@ void print_char(char c) {
 
     if (c == BACKSPACE)
         VGA_backspace();
-    else
+    else {
         VGA_display_char(c);
+        SER_putc(c);
+    }
 }
 
 static int build_string(char **str, unsigned long long val, int base, int sign) {
@@ -115,6 +118,7 @@ static int print_int(int i) {
         str--;
 
     VGA_display_str(str);
+    SER_write(str, strlen(str));
     return strlen(str);
 }
 
@@ -129,6 +133,7 @@ static int print_uint(unsigned int u) {
         VGA_display_str("\nprint_uint error\n");
 
     VGA_display_str(str);
+    SER_write(str, strlen(str));
     return len;
 }
 
@@ -140,6 +145,7 @@ static int print_hex(unsigned int u) {
         VGA_display_str("\nprint_uint error\n");
 
     VGA_display_str(str);
+    SER_write(str, strlen(str));
     return strlen(str);
 }
 
@@ -154,11 +160,13 @@ static int print_ptr(void *p) {
         VGA_display_str("\nprint_ptr error\n");
 
     VGA_display_str(str);
+    SER_write(str, strlen(str));
     return strlen(str);
 }
 
 static int print_str(char *str) {
     VGA_display_str(str);
+    SER_write(str, strlen(str));
     return strlen(str);
 }
 
