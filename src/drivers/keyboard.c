@@ -1,5 +1,6 @@
 #include "keyboard.h"
 #include "interrupts.h"
+#include "pic.h"
 
 #define KB_TIMEOUT 3
 #define KB_DEFAULT_SCAN_CODE KB_SCAN_CODE_2
@@ -9,52 +10,59 @@
 #define QI_WRITE 1
 
 #define LAST_KEY 0x46
+#define KB_MASK 1
 
 /* Global variables. */
 
+/*
 static struct {
-    uint8_t operation; /* Read or write. */
-    uint8_t data; /* Command if writing, response if reading. */
-    uint8_t expected_res; /* The response received if command is successful. */
+    uint8_t operation; 
+    uint8_t data; 
+    uint8_t expected_res; 
 } queue_item;
+*/
 
-static uint8_t cmd_queue[KB_QUEUE_SIZE];
-static uint8_t *queue_head;
-static uint8_t *queue_tail;
+struct KB_int_arg {
+    key_handler_t handler;
+};
+
+//static uint8_t cmd_queue[KB_QUEUE_SIZE];
+//static uint8_t *queue_head;
+//static uint8_t *queue_tail;
 static int modifiers_pressed;
 static int toggles_set;
+static struct KB_int_arg arg;
 
 /* Static functions. */
 
+/*
 static void reset_queue() {
     queue_tail = NULL;
     queue_head = cmd_queue;
-    memset(cmd_queue, 0, KB_QUEUE_SIZE); /* Zero queue. */
+    memset(cmd_queue, 0, KB_QUEUE_SIZE);
 }
 
 static int queue(uint8_t item) {
     uint8_t *shift;
     int i;
 
-    if (!queue_tail) /* No tail exists. */
-        if (queue_head != cmd_queue) /* If head is not at beginning. */
+    if (!queue_tail) 
+        if (queue_head != cmd_queue) 
             return EXIT_FAILURE;
-        else /* Head is at correct place. */
-            queue_tail = queue_head; /* Put tail at correct place. */
+        else 
+            queue_tail = queue_head; 
 
-    /* Check if the tail is at the end. */
     if (queue_tail == cmd_queue + KB_QUEUE_SIZE) {
-        if (queue_head == cmd_queue) /* Queue is full. */
+        if (queue_head == cmd_queue) 
             return KB_QUEUE_FULL;
-        else { /* Queue is not full. */
-            /* Shift all element down the queue. */
+        else { 
             shift = queue_head;
 
             for (i = 0; shift <= queue_tail; i++)
                 cmd_queue[i] = *shift++;
 
-            queue_head = cmd_queue; /* Reset head. */
-            queue_tail -= --i; /* Move tail to new position. */
+            queue_head = cmd_queue; 
+            queue_tail -= --i; 
         }
     }
 
@@ -65,16 +73,16 @@ static int queue(uint8_t item) {
 
 static int dequeue(uint8_t *item) {
 
-    if (queue_head == cmd_queue + KB_QUEUE_SIZE) { /* Queue is empty. */
+    if (queue_head == cmd_queue + KB_QUEUE_SIZE) {
         reset_queue();
         return KB_QUEUE_EMPTY;
     }
-    else if (queue_head > queue_tail) { /* Queue is empty. */
+    else if (queue_head > queue_tail) {
         reset_queue();
         return KB_QUEUE_EMPTY;
     }
 
-    *item = *queue_head++; /* Pop head. */
+    *item = *queue_head++;
     return EXIT_SUCCESS;
 }
 
@@ -86,9 +94,8 @@ static uint8_t resend_cmd(uint8_t code) {
         CLI;
     }
 
-    i = 0; /* Assumes one resend has already been sent. */
+    i = 0; 
 
-    /* Try to resend data three times if keyboard asks for a resend. */
     while ((res = PS2_polling_read()) == KB_RESEND_CMD && i++ < KB_TIMEOUT)
         PS2_write(code);
 
@@ -102,21 +109,21 @@ static int exec_cmds() {
     uint8_t cmd;
     int res;
 
-    /* Execute all commands in the queue. */
     while (dequeue(&cmd) == EXIT_SUCCESS) {
         res = PS2_write(cmd);
     }
 
-    res = PS2_polling_read(); /* Check for ACK. */
-    if (res == KB_RESEND_CMD) { /* If keyboard is requesting a resend. */
-        res = resend_cmd(cmd); /* Try to resend until timeout reached. */
+    res = PS2_polling_read(); 
+    if (res == KB_RESEND_CMD) { 
+        res = resend_cmd(cmd); 
 
-        if (res == KB_RESEND_CMD) /* Keyboard does not support command. */
+        if (res == KB_RESEND_CMD) 
             return KB_TIMEOUT_EXCEEDED;
     }
 
     return res;
 }
+*/
 
 /* External functions. */
 
@@ -173,6 +180,7 @@ extern int KB_enable(){
     return res;
 }
 
+/*
 extern int KB_disable(){
     int res, int_enabled = 0;
 
@@ -181,7 +189,7 @@ extern int KB_disable(){
         CLI;
     }
 
-    queue(KB_DISABLE_SCANNING); /* Disable the keyboard. */
+    queue(KB_DISABLE_SCANNING); 
     res = exec_cmds();
 
     if (res == KB_CMD_ACK)
@@ -191,6 +199,7 @@ extern int KB_disable(){
         STI;
     return res;
 }
+*/
 
 extern int KB_set_scan_code(uint8_t code){
     int res, int_enabled = 0;
@@ -243,13 +252,14 @@ extern uint8_t KB_get_scan_code(){
 }
 
 extern int KB_init(){
-    int res, int_enabled = 0, debug = 1;
+    int res, int_enabled = 0;
 
     if (are_interrupts_enabled()) {
         int_enabled = 1;
         CLI;
     }
 
+    arg.handler = NULL;
     modifiers_pressed = 0;
     toggles_set = 0;
 
@@ -283,6 +293,11 @@ extern int KB_init(){
         return res;
     }
 
+    PIC_clear_mask(KB_MASK); /* Clear mask for keyboard. */
+
+    /* Set interrupt handler. */
+    IRQ_set_handler(KB_MASK + PIC_MASTER_OFFSET, KB_interrupt_handler, &arg);
+
     if (int_enabled)
         STI;
 
@@ -292,7 +307,6 @@ extern int KB_init(){
 extern keypress KB_get_keypress() {
     keypress key;
     uint8_t res;
-    char c;
 
     key.codepoint = 0; /* Zero this in case characters are not printable. */
     res = PS2_read(); /* Use interrupt driven function. */
@@ -368,6 +382,7 @@ extern keypress KB_get_keypress() {
     return key;
 }
 
+/*
 extern int KB_set_default_params(){
 }
 
@@ -387,4 +402,14 @@ extern int KB_get_delay(){
 extern int KB_set_all_keys_type(int type){
 }
 extern int KB_set_key_type(int scan_code, int type){
+}
+*/
+
+extern void KB_interrupt_handler(int irq, int error, void *arg) {
+    keypress kp;
+
+    kp = KB_get_keypress(); /* Get key pressed. */
+
+    if (kp.codepoint)
+        printk("%c", kp.codepoint); /* Print character. */
 }
