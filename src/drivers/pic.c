@@ -11,11 +11,6 @@
 #define PIC_SLAVE_CMD 0x00A0
 #define PIC_SLAVE_DATA 0x00A1
 
-/* Offsets. */
-#define PIC_MASTER_OFFSET 0x20
-#define PIC_SLAVE_OFFSET 0x70
-#define PIC_NUM_IRQS 8
-
 #define ICW1_LTIM (1 << 3)
 #define ICW1_INIT 0x10
 #define ICW1_IC4 0x1
