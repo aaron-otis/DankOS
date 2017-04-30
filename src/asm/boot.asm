@@ -1,4 +1,5 @@
 global start
+global gdt64
 extern long_mode_start
 
 section .text
@@ -139,11 +140,15 @@ enable_paging:
 
     ret
 
-section .rodata
+section .data
 gdt64:
     dq 0                                        ; Zero entry.
 .code: equ $ - gdt64
     dq (1<<43) | (1<<44) | (1<<47) | (1<<53)    ; Code segment.
+    dq 1 << 47                                  ; Data segment.
+    dq 0                                        ; TSS segment.
+    dq 0
+    dq 0                                        ; User CS.
 .pointer:
     dw $ - gdt64 - 1
     dq gdt64
@@ -157,5 +162,5 @@ p3_table:
 p2_table:
     resb 4096
 stack_bottom:
-    resb 64
+    resb 128
 stack_top:
