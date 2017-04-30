@@ -1,7 +1,7 @@
 #include "init.h"
 
 extern int init() {
-    int res, debug = 1;
+    int res;
 
 
     /* 
