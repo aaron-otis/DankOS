@@ -11,17 +11,36 @@
 #define OP_SIZE_LEGACY 0
 #define PRESENT 1
 #define CONFORMING 1
+#define NON_CONFORMING 0
 
+/* GDT indexes. */
 #define KERN_CS_INDEX 1
 #define KERN_DS_INDEX 2
+#define TSS_INDEX 3
+#define USER_CS_INDEX 5
+#define USER_DS_INDEX 6
+
+/* GDT offsets in bytes. */
 #define KERN_CS_OFFSET 0x08
 #define KERN_DS_OFFSET 0x10
+#define TSS_OFFSET 0x18
+#define USER_CS_OFFSET 0x28
+#define USER_DS_OFFSET 0x30
 
-#define GDT_SIZE 16
+#define GDT_SIZE 6
 #define IDT_SIZE 256
 #define TSS_TYPE 0x9
 #define GRANULARITY 0
 #define PAGE_SIZE 4096
+#define INT_GATE 0xE
+
+/* Macros for storing base addresses in descriptors. */
+#define OFF_1_MASK 0xFFFF
+#define OFF_2_MASK 0xFFFF
+#define TSS_OFF_2_MASk 0xFF
+#define TSS_OFF_3_SHIFT 48
+#define OFF_2_SHIFT 16
+#define OFF_3_SHIFT 32
 
 struct segment_selector {
     uint16_t rpi:2; /* Privilege level (CPL). */
@@ -63,22 +82,22 @@ typedef struct {
 } __attribute__ ((packed)) ID; /* Interrupt descriptor. */
 
 typedef struct {
-    uint16_t limit;
+    uint16_t limit1;
     uint16_t base1;
     uint16_t base2:8;
     uint16_t type:4;
     uint16_t zero:1;
     uint16_t dpl:2;
     uint16_t present:1;
-    uint16_t segment_limit:4;
+    uint16_t limit2:4;
     uint16_t avl:1;
     uint16_t reserved1:2;
     uint16_t granularity:1;
     uint16_t base3:8;
-    uint32_t reserved2;
-    uint32_t reserved3:8;
+    uint32_t base4;
+    uint32_t reserved2:8;
     uint32_t legacy:5;
-    uint32_t reserved4:19;
+    uint32_t reserved3:19;
 } __attribute__ ((packed)) TD; /* TSS descriptor. */
 
 typedef struct TSS {
@@ -91,16 +110,16 @@ typedef struct TSS {
     uint64_t ist2;
     uint64_t ist3;
     uint64_t ist4;
+    uint64_t ist5;
     uint64_t ist6;
     uint64_t ist7;
     uint64_t reserved3;
     uint16_t reserved4;
     uint16_t base;
-} __attribute__ ((packed)) TSS;
-
+} __attribute__ ((packed)) TSS; /* Actual TSS. */
 
 extern ID IDT[IDT_SIZE]; /* Interrupt descriptor table. */
 extern struct IDTR idtr;
-extern segment_descriptor GDT[];
+extern void *gdt64; /* GDT from asm label. */
 
 #endif
