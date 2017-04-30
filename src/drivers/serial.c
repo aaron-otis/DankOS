@@ -82,7 +82,7 @@ static void hw_write(uint8_t byte) {
     /* Check for empty hardware buffer. */
     if (uart.hw_buf_status) {
         while (!transmit_buf_status())
-                ; /* Poll until transmit buffer it empty. */
+            ; /* Poll until transmit buffer it empty. */
     }
 
     outb(COM1, byte); /* Write byte to hardware buffer. */
@@ -91,6 +91,16 @@ static void hw_write(uint8_t byte) {
     uart.hw_buf_status = HW_BUF_BUSY;
 }
 
+static void consume_next(struct UART *uart) {
+
+    if (uart->head != uart->tail) { /* Check if buffer is empty. */
+        hw_write(*uart->head++);
+
+        /* Wrap head to beginning if at the end. */
+        if (uart->head >= uart->buff + UART_BUF_SIZE)
+            uart->head = uart->buff;
+    }
+}
 
 static int queue_byte(uint8_t byte, struct UART *uart) {
     int int_enabled = 0;
@@ -166,25 +176,14 @@ extern int SER_putc(uint8_t c) {
     return res;
 }
 
-static void consume_next(struct UART *uart) {
-
-    if (uart->head != uart->tail) { /* Check if buffer is empty. */
-        hw_write(*uart->head++);
-
-        /* Wrap head to beginning if at the end. */
-        if (uart->head >= uart->buff + UART_BUF_SIZE)
-            uart->head = uart->buff;
-    }
-}
-
 extern void SER_int_handler(int irq, int error, void *arg) {
     struct UART *uart = (struct UART *) arg; /* Cast to the correct type. */
     uint8_t res;
 
     res = inb(COM1 + COM_INT_ID);
-    if ((res & RLS_INT) == RLS_INT)
+    if ((res & RLS_INT) == RLS_INT) /* Check for LINE status. */
         inb(COM1 + COM_LINE_STATUS_REG);
-    else if ((res & TRANSMIT_REG_EMPTY) == TRANSMIT_REG_EMPTY) {
+    else if ((res & TRANSMIT_REG_EMPTY) == TRANSMIT_REG_EMPTY) { /* Transmit. */
         uart->hw_buf_status = HW_BUF_IDLE;
         consume_next(uart);
     }
