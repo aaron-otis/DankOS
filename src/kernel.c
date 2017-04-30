@@ -2,14 +2,12 @@
 #include "kernel_tests.h"
 #include "lib/debug.h"
 #include "lib/string.h"
+#include "drivers/interrupts.h"
 #include "init.h"
-#include "sh.h"
 #include "gdt.h"
 
 /* Global variables. */
-segment_descriptor GDT[GDT_SIZE];
 static TSS tss;
-static struct segment_selector tss_sel;
 
 static void halt_cpu() {
 
@@ -17,27 +15,41 @@ static void halt_cpu() {
         HALT_CPU
 }
 
-static void gdt_init() {
+static void tss_init() {
+    uint64_t tss_addr = (uint64_t) &tss, tss_index = TSS_INDEX;
+    segment_descriptor *gdt = (segment_descriptor *) &gdt64;
+    struct segment_selector tss_sel;
+    int int_enabled = 0;
+    TD tss_desc;
 
-    /* Zero GDT. */
-    memset(&GDT, 0, sizeof(segment_descriptor) * GDT_SIZE);
+    if (are_interrupts_enabled()) {
+        int_enabled = 1;
+        CLI;
+    }
 
-    /* Kernel Code Segment. */
-    GDT[KERN_CS_INDEX].dpl = KERN_MODE;
-    GDT[KERN_CS_INDEX].op_size = OP_SIZE_LEGACY;
-    GDT[KERN_CS_INDEX].long_mode = LONG_MODE;
-    GDT[KERN_CS_INDEX].present = PRESENT;
-    GDT[KERN_CS_INDEX].code_data = CODE_SEG;
-    GDT[KERN_CS_INDEX].conform_expand = CONFORMING;
+    memset(&tss, 0, sizeof(tss)); /* Zero TSS. */
 
-    /* Kernel Data Segment. */
-    GDT[KERN_DS_INDEX].present = PRESENT;
+    /* Set up TSS descriptor. */
+    tss_desc.limit1 = sizeof(tss);
+    tss_desc.base1 = tss_addr & OFF_1_MASK;
+    tss_desc.base2 = (tss_addr >> OFF_2_SHIFT) & TSS_OFF_2_MASk;
+    tss_desc.type = TSS_TYPE;
+    tss_desc.dpl = KERN_MODE;
+    tss_desc.present = PRESENT;
+    tss_desc.base3 = (tss_addr >> TSS_OFF_3_SHIFT) & TSS_OFF_2_MASk;
+    tss_desc.base4 = (tss_addr >> OFF_3_SHIFT);
 
-    /* TSS segment. */
-    memset(&tss, 0, sizeof(tss));
+    /* Copy TSS descriptor into the proper place in the GDT. */
+    memcpy(&gdt[TSS_INDEX], &tss_desc, sizeof(tss_desc));
+
+    /* Set up TSS selector. */
     tss_sel.rpi = 0;
     tss_sel.ti = 0;
-    
+    tss_sel.index = tss_index;
+    __asm__("ltr %0": : "m"(tss_sel)); /* Load TSS selector. */
+
+    if (int_enabled)
+        STI;
 }
 
 int kernel_main() {
@@ -45,7 +57,8 @@ int kernel_main() {
     /* 
      * Initializations.
      */
-    gdt_init();
+
+    tss_init(); /* Initialize TSS. */
 
     if (init() == EXIT_FAILURE)
         halt_cpu();
