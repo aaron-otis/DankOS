@@ -64,7 +64,6 @@ extern void IRQ_init(void) {
         interrupt_table[i].handler = unhandled_interrupt;
         interrupt_table[i].arg = NULL;
     }
-
 }
 
 extern int IRQ_set_handler(int irq, irq_handler_t handler, void *arg) {
