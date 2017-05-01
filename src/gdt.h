@@ -42,6 +42,9 @@
 #define OFF_2_SHIFT 16
 #define OFF_3_SHIFT 32
 
+#define NUM_IST_STACKS 5
+#define IST_STACK_SIZE 256
+
 struct segment_selector {
     uint16_t rpi:2; /* Privilege level (CPL). */
     uint16_t ti:1; /* Must be 0 to indicate the GDT is used. */
@@ -121,5 +124,6 @@ typedef struct TSS {
 extern ID IDT[IDT_SIZE]; /* Interrupt descriptor table. */
 extern struct IDTR idtr;
 extern void *gdt64; /* GDT from asm label. */
+extern uint8_t IST_stacks[NUM_IST_STACKS][IST_STACK_SIZE];
 
 #endif
