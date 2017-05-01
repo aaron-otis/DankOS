@@ -1,6 +1,10 @@
 #ifndef _INTERRUPTS_H
 #define _INTERRUPTS_H
 
+#define DOUBLE_FAULT 0x8
+#define GPF 0xD
+#define PAGE_FAULT 0xE
+
 extern void IRQ_init(void);
 extern int IRQ_get_mask(int IRQline);
 extern void IRQ_end_of_interrupt(int irq);

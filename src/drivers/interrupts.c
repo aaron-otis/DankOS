@@ -27,7 +27,10 @@ extern void IRQ_end_of_interrupt(int irq) {
 }
 
 static void unhandled_interrupt(int irq, int error, void *arg) {
-    printk("Interrupt %d is not handled yet...\n", irq);
+    register intptr_t sp asm ("rsp");
+
+    printk("\nInterrupt %d is not handled yet...\n", irq);
+    printk("Kernel stack: %p\n", sp);
 }
 
 extern int IRQ_get_mask(int IRQline) {
@@ -64,6 +67,11 @@ extern void IRQ_init(void) {
         interrupt_table[i].handler = unhandled_interrupt;
         interrupt_table[i].arg = NULL;
     }
+
+    /* Modify the double fault interrupts to have different stacks. */
+    IDT[DOUBLE_FAULT].ist = 1;
+    IDT[GPF].ist = 2;
+    IDT[PAGE_FAULT].ist = 3;
 }
 
 extern int IRQ_set_handler(int irq, irq_handler_t handler, void *arg) {
