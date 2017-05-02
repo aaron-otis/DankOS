@@ -43,7 +43,7 @@
 #define OFF_3_SHIFT 32
 
 #define NUM_IST_STACKS 5
-#define IST_STACK_SIZE 256
+#define IST_STACK_SIZE 4096
 
 struct segment_selector {
     uint16_t rpi:2; /* Privilege level (CPL). */
