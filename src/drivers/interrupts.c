@@ -30,7 +30,6 @@ static void unhandled_interrupt(int irq, int error, void *arg) {
     register intptr_t sp asm ("rsp");
 
     printk("\nInterrupt %d is not handled yet...\n", irq);
-    printk("Kernel stack: %p\n", sp);
 }
 
 extern int IRQ_get_mask(int IRQline) {
@@ -45,7 +44,6 @@ extern void IRQ_handler(int irq, int error) {
         if (interrupt_table[irq].handler) /* Check for null pointer. */
             interrupt_table[irq].handler(irq, error, interrupt_table[irq].arg);
 
-    IRQ_end_of_interrupt(irq); /* Signal EOI. */
 }
 
 extern void IRQ_init(void) {
