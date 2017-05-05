@@ -20,6 +20,9 @@ drv_object_files := $(patsubst src/drivers/%.c, $(build_dir)/drivers/%.o, \
 lib_files := $(wildcard src/lib/*.c)
 lib_obj_files := $(patsubst src/lib/%.c, $(build_dir)/libs/%.o, $(lib_files))
 
+sys_files := $(wildcard src/sys/*.c)
+sys_obj_files := $(patsubst src/sys/%.c, $(build_dir)/sys/%.o, $(sys_files))
+
 CC = bin/$(arch)-elf-gcc
 CFLAGS = -Wall -g -c
 
@@ -65,7 +68,7 @@ update-img: $(kernel) $(grup_cfg) make-img
 	@sudo losetup -d /dev/loop1
 
 $(kernel): $(assembly_object_files) $(linker_script) $(c_object_files) build_objs
-	ld -n -T $(linker_script) -o $(kernel) $(assembly_object_files) $(c_object_files) $(lib_obj_files) $(drv_object_files)
+	ld -n -T $(linker_script) -o $(kernel) $(assembly_object_files) $(c_object_files) $(lib_obj_files) $(drv_object_files) $(sys_obj_files)
 
 build_objs:
 	cd src && $(MAKE) && cd ..
