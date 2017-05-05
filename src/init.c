@@ -52,13 +52,6 @@ extern int init() {
 
     STI;
 
-    /* Test page fault interrupt. */
-    /*
-    int *p = (int *) 0xFFFFFFFFFFFFFFFF;
-    while (debug);
-    *p = 0;
-    */
-
     printk("\ndone\n");
     return EXIT_SUCCESS;
 }
