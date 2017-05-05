@@ -187,4 +187,6 @@ extern void SER_int_handler(int irq, int error, void *arg) {
         uart->hw_buf_status = HW_BUF_IDLE;
         consume_next(uart);
     }
+
+    IRQ_end_of_interrupt(irq); /* Signal EOI. */
 }

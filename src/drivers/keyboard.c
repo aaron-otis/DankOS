@@ -412,4 +412,6 @@ extern void KB_interrupt_handler(int irq, int error, void *arg) {
 
     if (kp.codepoint)
         printk("%c", kp.codepoint); /* Print character. */
+
+    IRQ_end_of_interrupt(irq); /* Signal EOI. */
 }
