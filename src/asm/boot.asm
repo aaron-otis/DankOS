@@ -5,6 +5,7 @@ extern long_mode_start
 section .text
 bits 32
 start:
+    mov edi, ebx                    ; Copy pointer to multiboot header.
     mov esp, stack_top              ; Point stack pointer to safe place.
 
     call check_multiboot            ; Do tests.
