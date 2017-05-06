@@ -88,6 +88,7 @@ MB_mem_info MB_parse_tags(MB_basic_tag *mb_tag) {
             if (!i) {
                 mem_info.low.address = mmap_entry->base_addr;
                 mem_info.low.size = mmap_entry->length;
+                i++;
             }
             else if (i == 1) {
                 mem_info.high.address = mmap_entry->base_addr;
