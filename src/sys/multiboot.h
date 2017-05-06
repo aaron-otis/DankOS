@@ -89,7 +89,7 @@ typedef struct {
     MB_mem_block low;
     MB_mem_block high;
     long kern_start;
-    int kern_size;
+    long kern_size;
 } MB_mem_info;
 
 MB_mem_info MB_parse_tags(MB_basic_tag *);
