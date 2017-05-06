@@ -10,7 +10,6 @@
 
 /* Global variables. */
 static TSS tss;
-uint8_t IST_stacks[NUM_IST_STACKS][IST_STACK_SIZE];
 
 static void halt_cpu() {
 
@@ -52,9 +51,9 @@ static void tss_init() {
     __asm__("ltr %0": : "m"(tss_sel)); /* Load TSS selector. */
 
     /* Set up critical ISTs. */
-    tss.ist1 = (uint64_t) (&IST_stacks[1]);
-    tss.ist2 = (uint64_t) (&IST_stacks[2]);
-    tss.ist3 = (uint64_t) (&IST_stacks[3]);
+    tss.ist1 = (uint64_t) MMU_pf_alloc();
+    tss.ist2 = (uint64_t) MMU_pf_alloc();
+    tss.ist3 = (uint64_t) MMU_pf_alloc();
 
     if (int_enabled)
         STI;
@@ -66,12 +65,12 @@ int kernel_main(MB_basic_tag *mb_tag) {
      * Initializations.
      */
 
-    tss_init(); /* Initialize TSS. */
-
     if (init() == EXIT_FAILURE)
         halt_cpu();
 
     MMU_pf_init(mb_tag);
+    tss_init(); /* Initialize TSS. */
+    page_fault_test();
 
     /* Halt CPU at end for testing. */
     halt_cpu();
