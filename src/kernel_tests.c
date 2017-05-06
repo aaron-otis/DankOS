@@ -109,9 +109,22 @@ void ps2_tests() {
 void keyboard_tests() {
 }
 
+void page_fault_test() {
+    int debug = 1;
+    register intptr_t sp asm ("rsp");
+    int *p = (int *) 0xFFFFFFFFFFFFFFFF;
+
+    printk("\nKernel stack: %p\n", sp);
+    //while (debug);
+    *p = 0;
+
+    printk("\nKernel stack: %p\n", sp);
+}
+
 void run_all_tests() {
     //vga_driver_tests();
     stdio_tests();
     ps2_tests();
     keyboard_tests();
+    page_fault_test();
 }
