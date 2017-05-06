@@ -3,11 +3,14 @@
 #include "lib/debug.h"
 #include "lib/string.h"
 #include "drivers/interrupts.h"
+#include "sys/multiboot.h"
+#include "sys/memory.h"
 #include "init.h"
 #include "gdt.h"
 
 /* Global variables. */
 static TSS tss;
+uint8_t IST_stacks[NUM_IST_STACKS][IST_STACK_SIZE];
 
 static void halt_cpu() {
 
@@ -48,11 +51,16 @@ static void tss_init() {
     tss_sel.index = tss_index;
     __asm__("ltr %0": : "m"(tss_sel)); /* Load TSS selector. */
 
+    /* Set up critical ISTs. */
+    tss.ist1 = (uint64_t) (&IST_stacks[1]);
+    tss.ist2 = (uint64_t) (&IST_stacks[2]);
+    tss.ist3 = (uint64_t) (&IST_stacks[3]);
+
     if (int_enabled)
         STI;
 }
 
-int kernel_main() {
+int kernel_main(MB_basic_tag *mb_tag) {
 
     /* 
      * Initializations.
@@ -62,6 +70,8 @@ int kernel_main() {
 
     if (init() == EXIT_FAILURE)
         halt_cpu();
+
+    MMU_pf_init(mb_tag);
 
     /* Halt CPU at end for testing. */
     halt_cpu();
