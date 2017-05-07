@@ -1,3 +1,6 @@
+/** 
+ * @file
+ */
 #include "kernel.h"
 #include "kernel_tests.h"
 #include "lib/debug.h"
@@ -11,12 +14,27 @@
 /* Global variables. */
 static TSS tss;
 
+/** 
+ * Infinite loop to halt CPU.
+ *
+ * @pre None.
+ * @post The CPU is halted.
+ */
 static void halt_cpu() {
 
     for (;;) /* Infinite loop. */
         HALT_CPU
 }
 
+/** \brief Initialize TSS.
+ *
+ * Creates and populates a TSS descriptor and copies it into the correct portion 
+ * of the GDT. Creates a TSS segment selector and loads it with the ltr 
+ * instruction. Loads a full page for stacks into critical ISTs.
+ *
+ * \pre None.
+ * \post The TSS is initialized.
+ */
 static void tss_init() {
     uint64_t tss_addr = (uint64_t) &tss, tss_index = TSS_INDEX;
     segment_descriptor *gdt = (segment_descriptor *) &gdt64;
@@ -59,8 +77,16 @@ static void tss_init() {
         STI;
 }
 
+/**
+ * \brief The main kernel thread.
+ *
+ * Initializes all subsystems and manages resources.
+ * \param mb_tag a pointer to the multiboot 2 header.
+ * \returns 0.
+ * @pre None.
+ * @post None.
+ */
 int kernel_main(MB_basic_tag *mb_tag) {
-
     /* 
      * Initializations.
      */
