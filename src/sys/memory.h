@@ -10,6 +10,8 @@ typedef struct {
     long length;
 } MEM_phys_block;
 
+/** @brief Node for the free list of page frames.
+ */
 typedef struct page_frame {
     void *address;
     struct page_frame *next;

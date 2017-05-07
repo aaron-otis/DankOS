@@ -1,25 +1,31 @@
+/**
+ * @file
+ */
 #include "memory.h"
 #include "multiboot.h"
 #include "../lib/stdio.h"
 #include "../lib/stdlib.h"
 #include <stddef.h>
 
-/* Free page list. */
+/** @brief Pointer the head of free list. */
 static page_frame *free_list_head;
-/*
-static uint8_t *next_page;
-static uint8_t *cur_page;
-*/
 
-/* Address of next free physical page frame. */
+/** @brief Address of next free physical page frame. */
 static uint8_t *phys_blocks;
 
-/* How physical bytes not in free list are left. */
+/** @brief How physical bytes not in free list are left. */
 static int untracked_bytes_left;
 
-/* Physical low and high memory and kernel locations. */
+/** @brief Physical low and high memory and kernel locations. */
 static MB_mem_info mem_info;
 
+/** @brief Initializes page frame allocator.
+ * 
+ * Initializes page frame allocator.
+ * @param mb_tag a pointer to the beginning of the multiboot 2 tags.
+ * @pre Multiboot 2 pointer must be valid.
+ * @post The page frame allocator is ready to allocate page frames.
+ */
 void MMU_pf_init(MB_basic_tag *mb_tag) {
 
     free_list_head = NULL; /* Free list doesn't exist yet. */
@@ -31,12 +37,20 @@ void MMU_pf_init(MB_basic_tag *mb_tag) {
     printk("low size %u\n", mem_info.low.size);
 }
 
+/** @brief Allocates a page frame.
+ *
+ * Searches memory for a free page and returns it.
+ * @returns A pointer to the start of a page frame or NULL if no more free
+ * pages exist.
+ * @pre Multiboot 2 type 6 (memory) and 9 (ELF sections) tags have been parsed and information stored in the global MB_mem_info struct.
+ * @post A free page frame has been allocated and tracked.
+ */
 void *MMU_pf_alloc(void) {
     void *ret = NULL;
     uint64_t high_address = mem_info.high.address;
+    page_frame *pf;
 
-    /* Get page directly from memory. */
-    if (phys_blocks) {
+    if (phys_blocks) { /* Get page directly from memory. */
         /* Check if memory block is less than a full page. */
         if (untracked_bytes_left < PAGE_SIZE) {
 
@@ -72,11 +86,26 @@ void *MMU_pf_alloc(void) {
     }
     else { /* Get page from free list. */
         /* TODO: Implement this after heap allocator has been completed. */
+        if (free_list_head) {
+            pf = free_list_head;
+            free_list_head = free_list_head->next;
+            ret = pf->address;
+
+            /* TODO: Free pf! */
+        }
     }
 
     return ret;
 }
 
+/** @brief Frees a page frame.
+ *
+ * Frees a page frame and stores it in the free list.
+ *
+ * @param pf a pointer to the page frame to be freed.
+ * @pre A page frame has been allocated.
+ * @post pf is added to the free list.
+ */
 int MMU_pf_free(void *pf) {
     uint64_t frame = (uint64_t) pf;
 
