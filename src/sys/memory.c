@@ -5,6 +5,7 @@
 #include "multiboot.h"
 #include "../lib/stdio.h"
 #include "../lib/stdlib.h"
+#include "../drivers/interrupts.h"
 #include <stddef.h>
 
 /** @brief Pointer the head of free list. */
@@ -27,6 +28,12 @@ static MB_mem_info mem_info;
  * @post The page frame allocator is ready to allocate page frames.
  */
 void MMU_pf_init(MB_basic_tag *mb_tag) {
+    int ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
 
     free_list_head = NULL; /* Free list doesn't exist yet. */
     phys_blocks = (uint8_t *) mem_info.low.address + PAGE_SIZE;
@@ -35,6 +42,9 @@ void MMU_pf_init(MB_basic_tag *mb_tag) {
     printk("\nChecking multiboot tags\n");
     mem_info = MB_parse_tags(mb_tag);
     printk("low size %u\n", mem_info.low.size);
+
+    if (ints_enabled)
+        STI;
 }
 
 /** @brief Allocates a page frame.
@@ -49,6 +59,12 @@ void *MMU_pf_alloc(void) {
     void *ret = NULL;
     uint64_t high_address = mem_info.high.address;
     page_frame *pf;
+    int ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
 
     if (phys_blocks) { /* Get page directly from memory. */
         /* Check if memory block is less than a full page. */
@@ -94,6 +110,9 @@ void *MMU_pf_alloc(void) {
             /* TODO: Free pf! */
         }
     }
+
+    if (ints_enabled)
+        STI;
 
     return ret;
 }
