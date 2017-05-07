@@ -45,12 +45,16 @@
 #define NUM_IST_STACKS 5
 #define IST_STACK_SIZE 4096
 
+/** @brief Generic system segment selector.
+ */
 struct segment_selector {
     uint16_t rpi:2; /* Privilege level (CPL). */
     uint16_t ti:1; /* Must be 0 to indicate the GDT is used. */
     uint16_t index:13;
 };
 
+/** @brief Generic 8 byte system descriptor.
+ */
 typedef struct descriptor {
     uint16_t limit;
     uint16_t address1;
@@ -70,7 +74,11 @@ typedef struct descriptor {
     uint8_t address3;
 } __attribute__ ((packed)) segment_descriptor;
 
-typedef struct {
+/** @brief Descriptor for IDT.
+ *
+ * 16 byte descriptor for Interrupt Descriptor Table that is loaded into the GDT.
+ */
+typedef struct ID{
     uint16_t offset1;
     uint16_t selector; /* Should be selector for kernel's code segment. */
     uint16_t ist:3;
@@ -84,7 +92,11 @@ typedef struct {
     uint32_t reserved2;
 } __attribute__ ((packed)) ID; /* Interrupt descriptor. */
 
-typedef struct {
+/** @brief Descriptor for TSS.
+ *
+ * 16 byte descriptor for the Task State Segment that is loaded into the GDT.
+ */
+typedef struct TD{
     uint16_t limit1;
     uint16_t base1;
     uint16_t base2:8;
@@ -103,6 +115,10 @@ typedef struct {
     uint32_t reserved3:19;
 } __attribute__ ((packed)) TD; /* TSS descriptor. */
 
+/* @brief TSS structure.
+ *
+ * Task State Segment.
+ */
 typedef struct TSS {
     uint32_t reserved1;
     uint64_t rsp0;
@@ -121,9 +137,8 @@ typedef struct TSS {
     uint16_t base;
 } __attribute__ ((packed)) TSS; /* Actual TSS. */
 
-extern ID IDT[IDT_SIZE]; /* Interrupt descriptor table. */
+extern ID IDT[IDT_SIZE]; /**< @brief Interrupt descriptor table. */
 extern struct IDTR idtr;
-extern void *gdt64; /* GDT from asm label. */
-extern uint8_t IST_stacks[NUM_IST_STACKS][IST_STACK_SIZE];
+extern void *gdt64; /**< @brief GDT from asm label. */
 
 #endif
