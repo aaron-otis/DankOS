@@ -2,8 +2,8 @@
 #include "drivers/vga.h"
 #include "lib/string.h"
 #include "lib/stdio.h"
+#include "sys/memory.h"
 
-#define LIGHTS_ON 0xFF
 
 void vga_driver_tests() {
     int i;
@@ -121,10 +121,20 @@ void page_fault_test() {
     printk("\nKernel stack: %p\n", sp);
 }
 
+void page_alloc_test() {
+    int *page, i;
+
+    for (i = 1; page = MMU_pf_alloc(); i++) {
+        *page = i;
+        printk("%u\n", *page);
+    }
+}
+
 void run_all_tests() {
     //vga_driver_tests();
     stdio_tests();
     ps2_tests();
     keyboard_tests();
     page_fault_test();
+    page_alloc_test();
 }

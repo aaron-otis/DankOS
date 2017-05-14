@@ -7,5 +7,6 @@ void stdio_tests();
 void ps2_tests();
 void keyboard_tests();
 void page_fault_test();
+void page_alloc_test();
 
 #endif
