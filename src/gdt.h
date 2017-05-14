@@ -140,5 +140,6 @@ typedef struct TSS {
 extern ID IDT[IDT_SIZE]; /**< @brief Interrupt descriptor table. */
 extern struct IDTR idtr;
 extern void *gdt64; /**< @brief GDT from asm label. */
+extern void tss_init();
 
 #endif
