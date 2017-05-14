@@ -1,4 +1,6 @@
 #include "init.h"
+#include "sys/memory.h"
+#include "gdt.h"
 
 extern int init() {
     int res;
@@ -15,6 +17,9 @@ extern int init() {
 
     /* Set VGA attributes so that printing can be seen. */
     VGA_set_attr(VGA_WHITE, VGA_BLACK, 0);
+
+    tss_init(); /* Initialize TSS. */
+    MMU_init(); /* Initialize virtual memory management. */
 
     printk("Initializing drivers... ");
 
