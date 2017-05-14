@@ -35,7 +35,7 @@ static void halt_cpu() {
  * \pre None.
  * \post The TSS is initialized.
  */
-static void tss_init() {
+void tss_init() {
     uint64_t tss_addr = (uint64_t) &tss, tss_index = TSS_INDEX;
     segment_descriptor *gdt = (segment_descriptor *) &gdt64;
     struct segment_selector tss_sel;
@@ -91,12 +91,15 @@ int kernel_main(MB_basic_tag *mb_tag) {
      * Initializations.
      */
 
+    MMU_pf_init(mb_tag); /* Initialize page allocator. */
+
     if (init() == EXIT_FAILURE)
         halt_cpu();
 
-    MMU_pf_init(mb_tag);
-    tss_init(); /* Initialize TSS. */
-    page_fault_test();
+    //page_fault_test();
+    //page_alloc_test();
+
+    printk("\nD A N K O S\n\n>");
 
     /* Halt CPU at end for testing. */
     halt_cpu();
