@@ -17,8 +17,10 @@
 #define KRESERVED_ADDR 0x20000000000
 #define KHEAP_ADDR 0xF0000000000
 
-#define USR_SPC_STACK_SIZE
-#define USR_SPC_HEAP_SIZE
+#define KSTACK_SIZE 0x200000
+#define KHEAP_SIZE 0x200000
+#define USR_STACK_SIZE 0x100000
+#define USR_HEAP_SIZE 0x100000
 
 typedef struct {
     void *address;
@@ -77,7 +79,7 @@ typedef struct page_directory_pointer_table {
     uint64_t nx:1;
 } __attribute__((packed)) PDP;
 
-typedef struct page_directory_table PD;
+typedef struct page_directory_pointer_table PD;
 
 typedef struct page_table {
     uint64_t present:1;
