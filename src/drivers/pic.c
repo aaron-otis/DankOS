@@ -1,15 +1,19 @@
+/**
+ * @file
+ */
 #include "pic.h"
 #include "io.h"
 #include "interrupts.h"
+#include "../gdt.h"
 #include "../lib/stdint.h"
 #include "../lib/stdlib.h"
 #include "../lib/stdio.h"
 
 /* Command and data ports for pic devices. */
-#define PIC_MASTER_CMD 0x0020
-#define PIC_MASTER_DATA 0x0021
-#define PIC_SLAVE_CMD 0x00A0
-#define PIC_SLAVE_DATA 0x00A1
+#define PIC_MASTER_CMD 0x0020 /**< @brief Command port for master device. */
+#define PIC_MASTER_DATA 0x0021 /**< @brief Data port for master device. */
+#define PIC_SLAVE_CMD 0x00A0 /**< @brief Command port for slave device. */
+#define PIC_SLAVE_DATA 0x00A1 /**< @brief Data port for slave device. */
 
 #define ICW1_LTIM (1 << 3)
 #define ICW1_INIT 0x10
@@ -32,8 +36,14 @@
 #define CASCADE_2 (1 << 1)
 
 /* Commands. */
-#define PIC_EOI 0x20 /* End of interrupt command code. */
+#define PIC_EOI 0x20 /**< @brief End of interrupt command code. */
 
+/** @brief Sets the mask for an IRQ.
+ *
+ * Sets mask for specified IRQ to disable it.
+ * @param IRQLine an IRQ number.
+ * @post The specified IRQ is disabled it it is maskable.
+ */
 void PIC_set_mask(unsigned char IRQline) {
     uint16_t port;
     uint8_t value;
@@ -48,6 +58,13 @@ void PIC_set_mask(unsigned char IRQline) {
     outb(port, value);        
 }
 
+/** @brief Clears the mast of an IRQ.
+ *
+ * Clears the mask for the specified IRQ.
+ * @param IRQline an IRQ number to clear the mask on.
+ * @pre The mask for the specified IRQ is set.
+ * @post The mask for the specified IRQ is cleared
+ */
 void PIC_clear_mask(unsigned char IRQline) {
     uint16_t port;
     uint8_t value;
@@ -63,6 +80,13 @@ void PIC_clear_mask(unsigned char IRQline) {
     outb(port, value);        
 }
 
+/** @brief Remaps reserved IRQs to unreserved numbers.
+ *
+ * Remaps reserved IRQs from IBM's reserved numbers to non-reserved numbers.
+ * @param moffset the offset for the master device.
+ * @param soffset the offset for the slave device.
+ * @post The reserved IRQs are remapped so that they may be received.
+ */
 void PIC_remap(int moffset, int soffset) {
     uint8_t master_mask, slave_mask;
 
@@ -90,6 +114,9 @@ void PIC_remap(int moffset, int soffset) {
     outb(PIC_SLAVE_DATA, slave_mask);
 }
 
+/** @brief Initializes the PIC.
+ * @post The PIC is initialized.
+ */
 int PIC_init(void) {
     int i;
 
@@ -103,16 +130,19 @@ int PIC_init(void) {
 
     PIC_remap(PIC_MASTER_OFFSET, PIC_SLAVE_OFFSET);
 
-    /*
-    for (i = 0; i < PIC_MASTER_OFFSET + PIC_NUM_IRQS * 2; i++)
-        PIC_clear_mask(i);
-    */
     for (i = 0; i < IDT_SIZE; i++ )
         PIC_set_mask(i);
 
     return EXIT_SUCCESS;
 }
 
+/** @brief Sends EOI signal.
+ *
+ * Sends an End Of Interrupt signal to the PIC.
+ * @param irq an IRQ number to signal the PIC with.
+ * @pre An interrupt with the specified IRQ has occurred.
+ * @post The PIC hardware has been notified that the interrupt has been handled.
+ */
 void PIC_sendEOI(uint8_t irq) { /* Send EOI to PIC controllers. */
     irq -= PIC_MASTER_OFFSET;
 
