@@ -6,6 +6,7 @@
 #include "../lib/stdio.h"
 #include "../lib/stdlib.h"
 #include "../lib/string.h"
+#include "../lib/debug.h"
 #include "../drivers/interrupts.h"
 #include <stddef.h>
 
@@ -163,7 +164,80 @@ int MMU_pf_free(void *pf) {
     return EXIT_FAILURE;
 }
 
-static int walk_page_table() {
+/** @brief Walks the page table.
+ *
+ * @returns 
+ * @pre PML4 must exist.
+ * @post 
+ */
+static int walk_page_table(uint64_t addr, PML4 *pml4, PT **pt) {
+    uint64_t index;
+    int ints_enabled = 0;
+    PDP *pdp;
+    PD *pd;
+
+    if (!pml4)
+        return -1;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
+
+    index = (addr >> PML4_OFFSET_SHIFT) & VIRT_ADDR_MASK;
+    if (!pml4[index].present) { /* Create PDP if not present. */
+        pml4[index].present = 1;
+        pml4[index].r_w = 1;
+
+        pdp = MMU_pf_alloc();
+        if (pdp == NULL) {
+            printk("MMU_pf_alloc failed!\n");
+            HALT_CPU
+        }
+        pml4[index].base_addr = (uint64_t) pdp >> PT_OFFSET_SHIFT;
+        memset(pdp, 0, PAGE_SIZE);
+    }
+    else /* PDP is present. */
+        pdp = (PDP *) ((uint64_t) page_map_l4[index].base_addr << 
+         PT_OFFSET_SHIFT);
+
+    index = (addr >> PDP_OFFSET_SHIFT) & VIRT_ADDR_MASK;
+    if (!pdp[index].present) { /* Create PD if not present. */
+        pd = MMU_pf_alloc();
+        if (pd == NULL) {
+            printk("MMU_pf_alloc failed!\n");
+            HALT_CPU
+        }
+        pdp[index].base_addr = (uint64_t) pd >> PT_OFFSET_SHIFT;
+
+        pdp[index].present = 1;
+        pdp[index].r_w = 1;
+        memset(pd, 0, PAGE_SIZE);
+    }
+    else /* PD is present. */
+        pd = (PD *) ((uint64_t) pdp[index].base_addr << PT_OFFSET_SHIFT);
+
+    index = (addr >> PD_OFFSET_SHIFT) & VIRT_ADDR_MASK;
+    if (!pd[index].present) { /* Create page table if not present. */
+        *pt = MMU_pf_alloc();
+        if (*pt == NULL) {
+            printk("MMU_pf_alloc failed!\n");
+            HALT_CPU
+        }
+
+        pd[index].base_addr = (uint64_t) *pt >> PT_OFFSET_SHIFT;
+        pd[index].present = 1;
+        pd[index].r_w = 1;
+        memset(*pt, 0, PAGE_SIZE);
+    }
+    else { /* Page table is present. */
+        *pt = (PT *) ((uint64_t) pd[index].base_addr << PT_OFFSET_SHIFT);
+    }
+
+    if (ints_enabled)
+        STI;
+
+    return (addr >> PT_OFFSET_SHIFT) & VIRT_ADDR_MASK;
 }
 
 /** @brief Initializes virtual memory management.
@@ -172,8 +246,9 @@ static int walk_page_table() {
  */
 int MMU_init() {
     int ints_enabled = 0;
-    uint64_t phys_mem_size = mem_info.high.address + mem_info.high.size;
-    uint64_t i, index;
+    const uint64_t phys_mem_size = mem_info.high.address + mem_info.high.size;
+    uint64_t i, index, address;
+    CR3 cr3;
     PDP *pdp;
     PD *pd;
     PT *pt;
@@ -204,57 +279,19 @@ int MMU_init() {
     /* Create at least one PDPT per region. */
 
     /* Identity map. */
-    for (i = 0; i <= phys_mem_size; i += PAGE_SIZE) {
-        index = (i >> PML4_OFFSET_SHIFT) & VIRT_ADDR_MASK;
-
-        if (!page_map_l4[index].present) { /* Create PDP if not present. */
-            page_map_l4[index].present = 1;
-            page_map_l4[index].r_w = 1;
-
-            pdp = MMU_pf_alloc();
-            page_map_l4[index].base_addr = (uint64_t) pdp >> PT_OFFSET_SHIFT;
-            memset(pdp, 0, PAGE_SIZE);
-
-        }
-        else /* PDP is present. */
-            pdp = (PDP *) ((uint64_t) page_map_l4[index].base_addr << 
-             PT_OFFSET_SHIFT);
-
-        index = (i >> PDP_OFFSET_SHIFT) & VIRT_ADDR_MASK;
-        if (!pdp[index].present) { /* Create PD if not present. */
-            pd = MMU_pf_alloc();
-            pdp[index].base_addr = (uint64_t) pd >> PT_OFFSET_SHIFT;
-
-            pdp[index].present = 1;
-            pdp[index].r_w = 1;
-            memset(pd, 0, PAGE_SIZE);
-        }
-        else /* PD is present. */
-            pd = (PD *) ((uint64_t) pdp[index].base_addr << PT_OFFSET_SHIFT);
-
-        index = (i >> PD_OFFSET_SHIFT) & VIRT_ADDR_MASK;
-        if (!pd[index].present) { /* Create page table if not present. */
-            pt = MMU_pf_alloc();
-            pd[index].base_addr = (uint64_t) pt >> PT_OFFSET_SHIFT;
-
-            pd[index].present = 1;
-            pt[index].r_w = 1;
-            memset(pt, 0, PAGE_SIZE);
-        }
-        else /* Page table is present. */
-            pt = (PT *) ((uint64_t) pd[index].base_addr << PT_OFFSET_SHIFT);
+    for (i = 0; i < phys_mem_size; i += PAGE_SIZE) {
+        index = walk_page_table(i, page_map_l4, &pt);
+        pt[index].present = 1;
+        pt[index].r_w = 1;
 
         if (i) /* Set current address to be the actual page referenced. */
             pt[index].base_addr = i >> PT_OFFSET_SHIFT;
         else /* Do not map address zero. */
             pt[index].base_addr = (uint64_t) MMU_pf_alloc() >> PT_OFFSET_SHIFT;
-
-
-        printk("Page address: %p\n", pt[index]);
     }
-    printk("Memory end: %qx\n", mem_info.high.address + mem_info.high.size);
 
     /* Kernel stacks. */
+    address = KSTACKS_ADDR;
 
     /* Growth region. */
 
@@ -266,7 +303,17 @@ int MMU_init() {
 
 
     /* Set CR3 last. */
+    cr3.base_addr = (uint64_t) page_map_l4 >> PT_OFFSET_SHIFT;
+    cr3.reserved1 = 0;
+    cr3.reserved2 = 0;
+    cr3.reserved3 = 0;
+    __asm__("movq %0, %%cr3" : : "r"(cr3));
 
     if (ints_enabled)
         STI;
+
+    return EXIT_SUCCESS;
+}
+
+extern void MMU_page_fault_handler(int irq, int error, void *arg) {
 }
