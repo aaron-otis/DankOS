@@ -12,12 +12,15 @@
 
 #define VIRT_ADDR_MASK 0x1FF /* 9 bits. */
 #define BASE_ADDR_MASK ((1UL << 40) - 1)
+#define ALLOC_ON_DEMAND 1
+#define PT_TRAVERSAL_ERROR -1
 
 #define PT_OFFSET_SHIFT 12
 #define PD_OFFSET_SHIFT (PT_OFFSET_SHIFT + 9)
 #define PDP_OFFSET_SHIFT (PD_OFFSET_SHIFT + 9)
 #define PML4_OFFSET_SHIFT (PDP_OFFSET_SHIFT + 9)
 
+/** @brief Pointer to level 4 entry of page table. */
 static PML4 *page_map_l4;
 
 /** @brief Pointer the head of free list. */
@@ -31,6 +34,9 @@ static int untracked_bytes_left;
 
 /** @brief Physical low and high memory and kernel locations. */
 static MB_mem_info mem_info;
+
+/** @brief Tracks next heap address. */
+static uint64_t next_virtual_address;
 
 /** @brief Initializes page frame allocator.
  * 
@@ -191,7 +197,7 @@ static int walk_page_table(uint64_t addr, PML4 *pml4, PT **pt) {
 
         pdp = MMU_pf_alloc();
         if (pdp == NULL) {
-            printk("MMU_pf_alloc failed!\n");
+            printk("MMU_pf_alloc failed to alloc a PDP\n");
             HALT_CPU
         }
         pml4[index].base_addr = (uint64_t) pdp >> PT_OFFSET_SHIFT;
@@ -205,7 +211,7 @@ static int walk_page_table(uint64_t addr, PML4 *pml4, PT **pt) {
     if (!pdp[index].present) { /* Create PD if not present. */
         pd = MMU_pf_alloc();
         if (pd == NULL) {
-            printk("MMU_pf_alloc failed!\n");
+            printk("MMU_pf_alloc failed to alloc a PD\n");
             HALT_CPU
         }
         pdp[index].base_addr = (uint64_t) pd >> PT_OFFSET_SHIFT;
@@ -221,7 +227,7 @@ static int walk_page_table(uint64_t addr, PML4 *pml4, PT **pt) {
     if (!pd[index].present) { /* Create page table if not present. */
         *pt = MMU_pf_alloc();
         if (*pt == NULL) {
-            printk("MMU_pf_alloc failed!\n");
+            printk("MMU_pf_alloc failed to alloc a PT\n");
             HALT_CPU
         }
 
@@ -249,8 +255,6 @@ int MMU_init() {
     const uint64_t phys_mem_size = mem_info.high.address + mem_info.high.size;
     uint64_t i, index, address;
     CR3 cr3;
-    PDP *pdp;
-    PD *pd;
     PT *pt;
 
     /* 
@@ -270,11 +274,11 @@ int MMU_init() {
 
     /* Create level 4 page map. */
     page_map_l4 = MMU_pf_alloc();
-    memset(page_map_l4, 0, PAGE_SIZE);
-
-    for (i = 0; i < PAGE_SIZE / sizeof(page_map_l4); i++) {
-        page_map_l4[i].r_w = 1;
+    if (!page_map_l4) {
+        printk("MMU_pf_alloc error allocating PML4\n");
+        HALT_CPU
     }
+    memset(page_map_l4, 0, PAGE_SIZE);
 
     /* Create at least one PDPT per region. */
 
@@ -296,18 +300,21 @@ int MMU_init() {
     /* Growth region. */
 
     /* Kernel heaps. */
+    next_virtual_address = KHEAP_ADDR; /* Set first kernel heap address. */
+
 
     /* User space. */
 
-
-
-
     /* Set CR3 last. */
     cr3.base_addr = (uint64_t) page_map_l4 >> PT_OFFSET_SHIFT;
+    printk("cr3 base_addr 0x%lx\n", cr3.base_addr << PT_OFFSET_SHIFT);
     cr3.reserved1 = 0;
     cr3.reserved2 = 0;
     cr3.reserved3 = 0;
     __asm__("movq %0, %%cr3" : : "r"(cr3));
+
+    /* Set IRQ handler. */
+    IRQ_set_handler(PAGE_FAULT, MMU_page_fault_handler, NULL);
 
     if (ints_enabled)
         STI;
@@ -315,5 +322,150 @@ int MMU_init() {
     return EXIT_SUCCESS;
 }
 
+/* Kernel heap functions. */
+void *MMU_alloc_page() {
+    PT *pt;
+    uint64_t index = walk_page_table(next_virtual_address, page_map_l4, &pt);
+    void *ret;
+    int ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
+
+    //printk("MMU_alloc_page got pt %p\n", pt);
+    pt[index].avl = ALLOC_ON_DEMAND; /* Set on demand allocation bit. */
+    pt[index].present = 0; /* Will mark present after handler allocs page.  */
+
+    ret = (void *) next_virtual_address;
+    next_virtual_address += PAGE_SIZE;
+    //printk("MMU_alloc returnting %p\n", ret);
+
+    if (ints_enabled)
+        STI;
+
+    return ret;
+}
+
+void *MMU_alloc_pages(unsigned int num) {
+    void *ret;
+    int i, ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
+
+    ret = MMU_alloc_page();
+    for (i = 1; i < num; i++)
+        MMU_alloc_page();
+
+    if (ints_enabled)
+        STI;
+
+    printk("Alloc'd %d virtual pages\n", num);
+    return ret;
+}
+
+void MMU_free_page(void *page) {
+    PT *pt;
+    uint64_t index, addr;
+    int ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
+
+    index = walk_page_table((uint64_t) page, page_map_l4, &pt);
+    addr = (pt[index].base_addr << PT_OFFSET_SHIFT);
+    MMU_pf_free((void *) addr);
+
+    pt[index].present = 0;
+    pt[index].avl &= !ALLOC_ON_DEMAND;
+
+    if (ints_enabled)
+        STI;
+}
+
+void MMU_free_pages(void *page, unsigned int num) {
+    PT *pt;
+    uint64_t index, addr = (uint64_t) page;
+    int i, ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
+
+    for (i = 0; i < num; i++, addr += PAGE_SIZE)
+        MMU_free_page((void *) addr);
+
+    if (ints_enabled)
+        STI;
+}
+
+/* Page fault handler. */
 extern void MMU_page_fault_handler(int irq, int error, void *arg) {
+    CR3 cr3;
+    PML4 *pml4;
+    PT *pt;
+    int index;
+    uint64_t mem_addr;
+
+    /* Get PML4 address. */
+    __asm__("movq %%cr3, %0" : "=r"(mem_addr));
+    memcpy(&cr3, &mem_addr, sizeof(CR3));
+    pml4 = (PML4 *) ((uint64_t) cr3.base_addr << PT_OFFSET_SHIFT);
+
+    /* Get offending memory address. */
+    __asm__("movq %%cr2, %0" : "=r"(mem_addr));
+
+    /* Find level 1 table. */
+    index = walk_page_table(mem_addr, pml4, &pt);
+
+    if (pt[index].avl & ALLOC_ON_DEMAND) {
+        pt[index].base_addr = (uint64_t) MMU_pf_alloc() >> PT_OFFSET_SHIFT;
+        pt[index].present = 1;
+        pt[index].avl &= !ALLOC_ON_DEMAND;
+
+        if (pt[index].base_addr == 0) { /* Check if MMU_pf_alloc failed. */
+            printk("MMU_pf_alloc failed in  MMU_page_fault_handler!\n");
+            HALT_CPU
+        }
+        printk("Page fault successfully handled on %p.\n",mem_addr);
+    }
+    else {
+        printk("Error in MMU_page_fault_handler handling address %p\n", 
+         (void *) mem_addr);
+        HALT_CPU
+    }
+}
+
+void *kbrk(intptr_t increment) {
+    uint64_t size;
+    int remainder;
+    void *ret;
+
+    if (!increment)
+        return (void *) next_virtual_address;
+    else if (increment < 0) {
+        printk("kbrk error: increment %p\n", increment);
+        return (void *) -1;
+    }
+
+    size = (uint64_t) increment / PAGE_SIZE;
+    remainder = (uint64_t) increment % PAGE_SIZE;
+
+    if (remainder)
+        size++;
+
+    printk("Requested %lu from kbrk\n", size);
+    ret = MMU_alloc_pages(size);
+    if (!ret)
+        ret = (void *) -1;
+    printk("\nkbrk returning %lp\n\n", ret);
+
+    return ret;
 }
