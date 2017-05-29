@@ -307,7 +307,6 @@ int MMU_init() {
 
     /* Set CR3 last. */
     cr3.base_addr = (uint64_t) page_map_l4 >> PT_OFFSET_SHIFT;
-    printk("cr3 base_addr 0x%lx\n", cr3.base_addr << PT_OFFSET_SHIFT);
     cr3.reserved1 = 0;
     cr3.reserved2 = 0;
     cr3.reserved3 = 0;
@@ -334,13 +333,11 @@ void *MMU_alloc_page() {
         CLI;
     }
 
-    //printk("MMU_alloc_page got pt %p\n", pt);
     pt[index].avl = ALLOC_ON_DEMAND; /* Set on demand allocation bit. */
     pt[index].present = 0; /* Will mark present after handler allocs page.  */
 
     ret = (void *) next_virtual_address;
     next_virtual_address += PAGE_SIZE;
-    //printk("MMU_alloc returnting %p\n", ret);
 
     if (ints_enabled)
         STI;
@@ -364,7 +361,6 @@ void *MMU_alloc_pages(unsigned int num) {
     if (ints_enabled)
         STI;
 
-    printk("Alloc'd %d virtual pages\n", num);
     return ret;
 }
 
@@ -434,7 +430,6 @@ extern void MMU_page_fault_handler(int irq, int error, void *arg) {
             printk("MMU_pf_alloc failed in  MMU_page_fault_handler!\n");
             HALT_CPU
         }
-        printk("Page fault successfully handled on %p.\n",mem_addr);
     }
     else {
         printk("Error in MMU_page_fault_handler handling address %p\n", 
@@ -461,11 +456,9 @@ void *kbrk(intptr_t increment) {
     if (remainder)
         size++;
 
-    printk("Requested %lu from kbrk\n", size);
     ret = MMU_alloc_pages(size);
     if (!ret)
         ret = (void *) -1;
-    printk("\nkbrk returning %lp\n\n", ret);
 
     return ret;
 }

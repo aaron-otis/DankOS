@@ -58,7 +58,6 @@ static int build_string(char **str, unsigned long long val, int base, int sign) 
     /* Determine the string length. */
     if (modifier == LONG_ARG) {
         len = LONG_STR_LEN;
-        //while(debug);
     }
     else if (modifier == SHORT_ARG)
         len = SHORT_STR_LEN;
