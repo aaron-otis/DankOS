@@ -5,6 +5,7 @@
 #include "types.h"
 #include "../drivers/vga.h"
 #include "../drivers/serial.h"
+#include "../drivers/interrupts.h"
 
 #define LONG_ARG 1
 #define SHORT_ARG 2
@@ -35,7 +36,6 @@
 #define BACKSPACE '\b'
 
 static unsigned int modifier;
-static unsigned char flag;
 
 void print_char(char c) {
 
@@ -48,8 +48,12 @@ void print_char(char c) {
 }
 
 static int build_string(char **str, unsigned long long val, int base, int sign) {
-    int len, i, size, debug = 1;
-    //while(debug);
+    int len, i, size, ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
 
     /* Determine the string length. */
     if (modifier == LONG_ARG) {
@@ -76,8 +80,12 @@ static int build_string(char **str, unsigned long long val, int base, int sign) 
         for (; val > 0 && len; val /= base) {
             (*str)[--len] = (val % base);
 
-            if (len < 0)
+            if (len < 0) {
+                if (ints_enabled)
+                    STI;
+
                 return STDIO_INVALID_LENGTH;
+            }
 
             /* Convert value to the correct character. */
             if ((*str)[len] >= DECIMAL_BASE)
@@ -94,6 +102,9 @@ static int build_string(char **str, unsigned long long val, int base, int sign) 
 
         (*str)[size - len] = 0;
     }
+
+    if (ints_enabled)
+        STI;
 
     return strlen(*str);
 }
@@ -119,6 +130,7 @@ static int print_int(int i) {
 
     VGA_display_str(str);
     SER_write(str, strlen(str));
+
     return strlen(str);
 }
 
@@ -151,6 +163,12 @@ static int print_hex(unsigned int u) {
 
 static int print_ptr(void *p) {
     char str[LONG_STR_LEN + 2], *buf;
+    int ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
 
     modifier = LONG_ARG;
     str[0] = '0';
@@ -162,19 +180,29 @@ static int print_ptr(void *p) {
 
     VGA_display_str(str);
     SER_write(str, strlen(str));
+
+    if (ints_enabled)
+        STI;
+
     return strlen(str);
 }
 
 static int print_str(char *str) {
     VGA_display_str(str);
     SER_write(str, strlen(str));
+
     return strlen(str);
 }
 
 
 extern int printk(const char *fmt, ...) {
-    int i, len = 0, debug = 1, fmt_len = strlen(fmt);
+    int i, len = 0, ints_enabled = 0, fmt_len = strlen(fmt);
     va_list ap;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
 
     va_start(ap, fmt);
 
@@ -257,6 +285,9 @@ extern int printk(const char *fmt, ...) {
                     break;
 
                 default:
+                    if (ints_enabled)
+                        STI;
+
                     return -1;
             }
         }
@@ -267,6 +298,9 @@ extern int printk(const char *fmt, ...) {
     }
 
     va_end(ap);
+
+    if (ints_enabled)
+        STI;
 
     return len;
 }
