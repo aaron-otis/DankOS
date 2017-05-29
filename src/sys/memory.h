@@ -13,14 +13,14 @@
  */
 
 #define PAGE_SIZE 4096
-#define KSTACKS_ADDR 0x10000000000
-#define KRESERVED_ADDR 0x20000000000
-#define KHEAP_ADDR 0xF0000000000
+#define KSTACKS_ADDR 0x10000000000ULL
+#define KRESERVED_ADDR 0x20000000000ULL
+#define KHEAP_ADDR 0xF0000000000ULL
 
-#define KSTACK_SIZE 0x200000
-#define KHEAP_SIZE 0x200000
-#define USR_STACK_SIZE 0x100000
-#define USR_HEAP_SIZE 0x100000
+#define KSTACK_SIZE 0x200000ULL
+#define KHEAP_SIZE 0x200000ULL
+#define USR_STACK_SIZE 0x100000ULL
+#define USR_HEAP_SIZE 0x100000ULL
 
 typedef struct {
     void *address;
@@ -104,8 +104,10 @@ int MMU_pf_free(void *pf);
 /* Virtual page allocator. */
 int MMU_init();
 void *MMU_alloc_page();
-void *MMU_alloc_pages(int num);
+void *MMU_alloc_pages(unsigned int num);
 void MMU_free_page(void *);
-void MMU_free_pages(void *, int num);
+void MMU_free_pages(void *, unsigned int num);
+extern void MMU_page_fault_handler(int irq, int error, void *arg);
+void *kbrk(intptr_t increment);
 
 #endif
