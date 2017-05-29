@@ -3,7 +3,21 @@
 #include "lib/string.h"
 #include "lib/stdio.h"
 #include "sys/memory.h"
+#include "sys/kmalloc.h"
 
+#define KMALLOC_TEST_LEN 0xFFFFFF
+
+/* Random functions provided by Dr. Nico. */
+static unsigned int seed = 1;
+static void srand (int newseed) {
+    seed = (unsigned)newseed & 0x7fffffffffffffffU;
+}
+
+unsigned int rand (void) {
+    seed = (seed * 6364136223846793005U + 1442695040888963407U)
+                 & 0x7fffffffffffffffU;
+    return (unsigned int) seed / 1000000;
+}
 
 void vga_driver_tests() {
     int i;
@@ -62,7 +76,7 @@ void stdio_tests() {
     char *str = "test string";
     short smin = SHRT_MIN, smax = SHRT_MAX;
     unsigned short usmin = SHRT_MIN, usmax = USHRT_MAX;
-    int i, imin = INT_MIN, imax = INT_MAX;
+    int imin = INT_MIN, imax = INT_MAX;
     unsigned int uimin = INT8_MIN, uimax = UINT_MAX;
     long lmin = LONG_MIN, lmax = LONG_MAX;
     unsigned long ulmin = LONG_MIN, ulmax = ULONG_MAX, test = 123;
@@ -92,7 +106,7 @@ void stdio_tests() {
     printk("Testing pointer converted to hex: %lx\n", (unsigned long) &test);
 
     /* Test printing longs. */
-    printk("Testing LONG_MIN: %lu\nTesting LONG_MIN: %lu\n", lmin, lmax);
+    printk("Testing LONG_MIN: %ld\nTesting LONG_MAX: %ld\n", lmin, lmax);
     printk("Testing unsigned LONG_MIN: %lu\n", ulmin);
     printk("Testing unsigned ULONG_MAX: %lu\n", ulmax);
     printk("Testing literal integer -1: %u\n", -1);
@@ -110,31 +124,71 @@ void keyboard_tests() {
 }
 
 void page_fault_test() {
-    int debug = 1;
     register intptr_t sp asm ("rsp");
     int *p = (int *) 0xFFFFFFFFFFFFFFFF;
 
-    printk("\nKernel stack: %p\n", sp);
-    //while (debug);
+    printk("\nKernel stack: %p\n", (void *) sp);
     *p = 0;
 
-    printk("\nKernel stack: %p\n", sp);
+    printk("\nKernel stack: %p\n", (void *) sp);
 }
 
-void page_alloc_test() {
+void page_frame_alloc_test() {
     int *page, i;
 
-    for (i = 1; page = MMU_pf_alloc(); i++) {
+    for (i = 1; (page = MMU_pf_alloc()); i++) {
         *page = i;
         printk("%u\n", *page);
     }
 }
 
+void page_alloc_test() {
+    char *test;
+    int i;
+
+    for (i = 0; i < KMALLOC_TEST_LEN; i++) {
+        printk("\nTesting virtual page allocation\n");
+        test = MMU_alloc_page();
+        printk("got address %p\n", test);
+        *test = 1;
+        printk("wrote %x\n", *test);
+        MMU_free_page(test);
+        printk("Freed page\n");
+    }
+}
+
+void kmalloc_test() {
+    char *test;
+    int i, debug;
+
+    printk("\nTesting kmalloc\n");
+    test = kmalloc(10);
+    *test = 1;
+    printk("kmalloc gave %lp\n", test);
+    free(test);
+    printk("freed %p\n", test);
+    test = kmalloc(5);
+    printk("kmalloc gave %lp\n\n", test);
+
+    for (i = 0; i < KMALLOC_TEST_LEN; i++) {
+        printk("Test %d\n", i);
+        test = kmalloc(rand());
+        printk("kmalloc gave %p\n", test);
+        *test = i;
+        printk("Wrote %x\n", *test);
+        if (test)
+            free(test);
+        printk("freed %p\n", test);
+    }
+}
+
 void run_all_tests() {
-    //vga_driver_tests();
+    vga_driver_tests();
     stdio_tests();
     ps2_tests();
     keyboard_tests();
     page_fault_test();
+    page_frame_alloc_test();
     page_alloc_test();
+    kmalloc_test();
 }
