@@ -8,6 +8,7 @@
 #include "drivers/interrupts.h"
 #include "sys/multiboot.h"
 #include "sys/memory.h"
+#include "sys/kmalloc.h"
 #include "init.h"
 #include "gdt.h"
 
@@ -95,9 +96,6 @@ int kernel_main(MB_basic_tag *mb_tag) {
 
     if (init() == EXIT_FAILURE)
         halt_cpu();
-
-    //page_fault_test();
-    //page_alloc_test();
 
     printk("\nD A N K O S\n\n>");
 
