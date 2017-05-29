@@ -49,6 +49,7 @@ void print_char(char c) {
 
 static int build_string(char **str, unsigned long long val, int base, int sign) {
     int len, i, size, debug = 1;
+    //while(debug);
 
     /* Determine the string length. */
     if (modifier == LONG_ARG) {
@@ -83,7 +84,6 @@ static int build_string(char **str, unsigned long long val, int base, int sign) 
                 (*str)[len] += HEX_LOWER_START - DECIMAL_BASE;
             else
                 (*str)[len] += ASCII_ZERO;
-
         }
     }
 
@@ -152,6 +152,7 @@ static int print_hex(unsigned int u) {
 static int print_ptr(void *p) {
     char str[LONG_STR_LEN + 2], *buf;
 
+    modifier = LONG_ARG;
     str[0] = '0';
     str[1] = 'x';
     buf = str + 2;
