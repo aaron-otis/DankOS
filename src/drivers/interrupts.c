@@ -30,6 +30,7 @@ static void unhandled_interrupt(int irq, int error, void *arg) {
     register intptr_t sp asm ("rsp");
 
     printk("\nInterrupt %d is not handled yet...\n", irq);
+    IRQ_end_of_interrupt(irq);
 }
 
 extern int IRQ_get_mask(int IRQline) {
