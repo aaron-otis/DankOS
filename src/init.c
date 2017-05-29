@@ -19,7 +19,6 @@ extern int init() {
     VGA_set_attr(VGA_WHITE, VGA_BLACK, 0);
 
     tss_init(); /* Initialize TSS. */
-    MMU_init(); /* Initialize virtual memory management. */
 
     printk("Initializing drivers... ");
 
@@ -30,6 +29,8 @@ extern int init() {
     /* Initialize interrupt driver. */
     IRQ_init();
     printk("IRQ ");
+
+    MMU_init(); /* Initialize virtual memory management. */
 
     /* Initialize PS2 driver. */
     res = PS2_init();
