@@ -4,6 +4,8 @@
 #define DOUBLE_FAULT 0x8
 #define GPF 0xD
 #define PAGE_FAULT 0xE
+#define SYSCALL_INT 0x80
+#define PROC_INT 0x82
 
 extern void IRQ_init(void);
 extern int IRQ_get_mask(int IRQline);
