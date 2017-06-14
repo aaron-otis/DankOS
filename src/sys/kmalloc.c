@@ -25,7 +25,7 @@
 #define DEBUG_REALLOC "MALLOC: realloc(%p,%d)\t=> (ptr=%p, size=%d)\n"
 
 static void *head = NULL;
-static char debug = 1;
+static char debug = 0;
 
 /* Struct for storing metadata about blocks */
 typedef struct Block {
