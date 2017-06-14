@@ -29,7 +29,7 @@ extern void IRQ_end_of_interrupt(int irq) {
 static void unhandled_interrupt(int irq, int error, void *arg) {
     register intptr_t sp asm ("rsp");
 
-    printk("\nInterrupt %d is not handled yet...\n", irq);
+    printk("\nInterrupt %d is not handled yet... Error: %d\n", irq, error);
     IRQ_end_of_interrupt(irq);
 }
 
@@ -44,7 +44,6 @@ extern void IRQ_handler(int irq, int error) {
     if (irq >= 0 && irq < IDT_SIZE) /* Ensure IRQ is within bounds. */
         if (interrupt_table[irq].handler) /* Check for null pointer. */
             interrupt_table[irq].handler(irq, error, interrupt_table[irq].arg);
-
 }
 
 extern void IRQ_init(void) {
@@ -67,10 +66,11 @@ extern void IRQ_init(void) {
         interrupt_table[i].arg = NULL;
     }
 
-    /* Modify the double fault interrupts to have different stacks. */
+    /* Modify critical interrupts to have different stacks. */
     IDT[DOUBLE_FAULT].ist = 1;
     IDT[GPF].ist = 2;
     IDT[PAGE_FAULT].ist = 3;
+    IDT[PROC_EXIT_INT].ist = 4;
 }
 
 extern int IRQ_set_handler(int irq, irq_handler_t handler, void *arg) {

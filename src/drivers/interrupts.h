@@ -5,7 +5,10 @@
 #define GPF 0xD
 #define PAGE_FAULT 0xE
 #define SYSCALL_INT 0x80
-#define PROC_INT 0x82
+#define PROC_EXIT_INT 0x83
+
+#define SYSCALL_INT_ASM "int $0x80"
+#define PROC_EXIT_INT_ASM "int $0x83"
 
 extern void IRQ_init(void);
 extern int IRQ_get_mask(int IRQline);

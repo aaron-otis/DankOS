@@ -17,7 +17,8 @@ def main():
     for i in range(256):
         f.write("global isr_wrapper{}\n".format(i))
     f.write("\n");
-    f.write("extern IRQ_handler\n\nsection .text\n\n")
+    f.write("extern IRQ_handler\n\nsection .text\n") # Common C handler.
+    f.write("extern cur_proc\nextern next_proc\n\n") # Process structs.
 
     # Create common IRQ handler.
     f.write("common_irq_handler:\n") # Label.
@@ -27,6 +28,154 @@ def main():
 
     f.write("\tcall IRQ_handler\n") # Call IRQ handler function.
 
+    # Set up check for context switching.
+    f.write("\tmov rcx, [cur_proc]\n\tcmp rcx, [next_proc]\n")
+    f.write("\tje no_swap\n\n")
+
+    #
+    # ASM for context swapping.
+    #
+
+    # Skip loading if current process is NULL.
+    f.write("\n\tcmp rcx, 0\n\tje load_context\n\n")
+
+    #
+    # Save current context.
+    #
+    # Need to dereference the pointer to |cur_proc| and store the address
+    # to the struct in a register.
+    #
+
+    f.write("save_context:\n")
+
+    # Dereference |cur_proc| and store in rdi.
+    f.write("\tmov rdi, [cur_proc]\n")
+
+    # Save rax and rbx.
+    f.write("\tmov [rdi], rax\n\tmov [rdi + 8], rbx\n")
+
+    # Save rcx.
+    f.write("\tmov rax, [rsp + 16]\n\tmov [rdi + 16], rax\n")
+
+    # Save rdx.
+    f.write("\tmov rax, [rsp + 24]\n\tmov [rdi + 24], rax\n")
+
+    # Save rdi.
+    f.write("\tmov rax, [rsp + 40]\n\tmov [rdi + 32], rax\n")
+
+    # Save rsi.
+    f.write("\tmov rax, [rsp + 32]\n\tmov [rdi + 40], rax\n")
+
+    # Save r8.
+    f.write("\tmov rax, [rsp + 8]\n\tmov [rdi + 48], rax\n")
+
+    # Save r9.
+    f.write("\tmov rax, [rsp]\n\tmov [rdi + 56], rax\n")
+
+    # Save r10 and r11.
+    f.write("\tmov [rdi + 64], r10\n\tmov [rdi + 72], r11\n")
+
+    # Save r12 and r13.
+    f.write("\tmov [rdi + 80], r12\n\tmov [rdi + 88], r13\n")
+
+    # Save r14 and r15.
+    f.write("\tmov [rdi + 96], r14\n\tmov [rdi + 104], r15\n")
+
+    # Save rbp.
+    f.write("\tmov [rdi + 112], rbp\n")
+
+    # Save rsp.
+    f.write("\tmov rax, [rsp + 72]\n\tmov [rdi + 120], rax\n")
+
+    # Save rip.
+    f.write("\tmov rax, [rsp + 48]\n\tmov [rdi + 128], rax\n")
+
+    # Save rflags.
+    f.write("\tmov rax, [rsp + 64]\n\tmov [rdi + 136], rax\n")
+
+    # Save CS.
+    f.write("\tmov rax, [rsp + 56]\n\tmov [rdi + 136], rax\n")
+
+    # Save SS
+    f.write("\tmov rax, [rsp + 80]\n\tmov [rdi + 152], rax\n")
+
+    # Save DS and ES.
+    f.write("\tmov [rdi + 160], ds\n\tmov [rdi + 168], es\n")
+
+    # Save FS and GS.
+    f.write("\tmov [rdi + 176], fs\n\tmov [rdi + 184], gs\n\n")
+
+    #
+    # Load next context.
+    #
+
+    f.write("load_context:\n")
+
+    # Dereference |next_proc| and store in rdi.
+    f.write("\tmov rdi, [next_proc]\n")
+
+    # Load rax and rbx.
+    f.write("\tmov rax, [rdi]\n\tmov rbx, [rdi + 8]\n")
+
+    # Load rcx.
+    f.write("\tmov rcx, [rdi + 16]\n\tmov [rsp + 16], rcx\n")
+
+    # Load rdx.
+    f.write("\tmov rcx, [rdi + 24]\n\tmov [rsp + 24], rcx\n")
+
+    # Load rdi.
+    f.write("\tmov rcx, [rdi + 32]\n\tmov [rsp + 40], rcx\n")
+
+    # Load rsi.
+    f.write("\tmov rcx, [rdi + 40]\n\tmov [rsp + 32], rcx\n")
+
+    # Load r8.
+    f.write("\tmov rcx, [rdi + 48]\n\tmov [rsp + 8], rcx\n")
+
+    # Load r9.
+    f.write("\tmov rcx, [rdi + 56]\n\tmov [rsp], rcx\n")
+
+    # Load r10 and r11.
+    f.write("\tmov r10, [rdi + 64]\n\tmov r11, [rdi + 72]\n")
+
+    # Load r12 and r13.
+    f.write("\tmov r12, [rdi + 80]\n\tmov r13, [rdi + 88]\n")
+
+    # Load r14 and r15.
+    f.write("\tmov r14, [rdi + 96]\n\tmov r15, [rdi + 104]\n")
+
+    # Load rbp.
+    f.write("\tmov rbp, [rdi + 112]\n")
+
+    # Load rsp.
+    f.write("\tmov rcx, [rdi + 120]\n\tmov [rsp + 72], rcx\n")
+
+    # Load rip.
+    f.write("\tmov rcx, [rdi + 128]\n\tmov [rsp + 48], rcx\n")
+
+    # Load rflags.
+    f.write("\tmov rcx, [rdi + 136]\n\tmov [rsp + 64], rcx\n")
+
+    # Load CS.
+    f.write("\tmov rcx, [rdi + 144]\n\tmov [rsp + 56], rcx\n")
+
+    # Load SS.
+    f.write("\tmov rcx, [rdi + 152]\n\tmov [rsp + 80], rcx\n")
+
+    # Load DS and ES.
+    f.write("\tmov ds, [rdi + 160]\n\tmov es, [rdi + 168]\n")
+
+    # Load FS and GS.
+    f.write("\tmov fs, [rdi + 176]\n\tmov gs, [rdi + 184]\n\n")
+
+    # Set |cur_proc| equal to |next_proc|.
+    f.write("\tmov rcx, [next_proc]\n\tmov [cur_proc], rcx\n\n")
+
+    #
+    # No context swap needed.
+    #
+
+    f.write("no_swap:\n")
     f.write("\tpop r9\n\tpop r8\n\tpop rcx\n") # Restore register values.
     f.write("\tpop rdx\n\tpop rsi\n\tpop rdi\n")
 
