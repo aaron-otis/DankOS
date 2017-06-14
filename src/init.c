@@ -1,6 +1,8 @@
 #include "init.h"
 #include "sys/memory.h"
 #include "gdt.h"
+#include "sys/proc.h"
+#include "sys/syscalls.h"
 
 extern int init() {
     int res;
@@ -31,6 +33,8 @@ extern int init() {
     printk("IRQ ");
 
     MMU_init(); /* Initialize virtual memory management. */
+    SYSCALL_init();
+    PROC_init();
 
     /* Initialize PS2 driver. */
     res = PS2_init();
