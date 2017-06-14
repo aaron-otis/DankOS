@@ -9,6 +9,7 @@
 #include "sys/multiboot.h"
 #include "sys/memory.h"
 #include "sys/kmalloc.h"
+#include "sys/proc.h"
 #include "init.h"
 #include "gdt.h"
 
@@ -73,9 +74,15 @@ void tss_init() {
     tss.ist1 = (uint64_t) MMU_pf_alloc();
     tss.ist2 = (uint64_t) MMU_pf_alloc();
     tss.ist3 = (uint64_t) MMU_pf_alloc();
+    tss.ist4 = (uint64_t) MMU_pf_alloc();
 
     if (int_enabled)
         STI;
+}
+
+void ktest(void *arg) {
+    printk("Testing kernel thread.\n");
+    exit();
 }
 
 /**
@@ -97,10 +104,20 @@ int kernel_main(MB_basic_tag *mb_tag) {
     if (init() == EXIT_FAILURE)
         halt_cpu();
 
+    //virutal_addr_tests();
     printk("\nD A N K O S\n\n>");
 
-    /* Halt CPU at end for testing. */
-    halt_cpu();
+    PROC_create_kthread(ktest, NULL);
+    PROC_create_kthread(ktest, NULL);
+
+    int debug = 1; /* DEBUGGING */
+    //while (debug); /* DEBUGGING */
+
+    while (1) {
+        PROC_run();
+
+        HALT_CPU
+    }
 
     return 0;
 }
