@@ -14,6 +14,7 @@
 #define BASE_ADDR_MASK ((1UL << 40) - 1)
 #define ALLOC_ON_DEMAND 1
 #define PT_TRAVERSAL_ERROR -1
+#define STACK_ALLIGN 0x10
 
 #define PT_OFFSET_SHIFT 12
 #define PD_OFFSET_SHIFT (PT_OFFSET_SHIFT + 9)
@@ -37,6 +38,9 @@ static MB_mem_info mem_info;
 
 /** @brief Tracks next heap address. */
 static uint64_t next_virtual_address;
+
+/** @brief Tracks next kernel stack address. */
+static uint64_t next_kernel_stack;
 
 /** @brief Initializes page frame allocator.
  * 
@@ -253,7 +257,7 @@ static int walk_page_table(uint64_t addr, PML4 *pml4, PT **pt) {
 int MMU_init() {
     int ints_enabled = 0;
     const uint64_t phys_mem_size = mem_info.high.address + mem_info.high.size;
-    uint64_t i, index, address;
+    uint64_t i, index;
     CR3 cr3;
     PT *pt;
 
@@ -295,7 +299,7 @@ int MMU_init() {
     }
 
     /* Kernel stacks. */
-    address = KSTACKS_ADDR;
+    next_kernel_stack = KSTACKS_ADDR;
 
     /* Growth region. */
 
@@ -461,4 +465,47 @@ void *kbrk(intptr_t increment) {
         ret = (void *) -1;
 
     return ret;
+}
+
+void *MMU_alloc_kstack() {
+    PT *pt;
+    uint64_t index;
+    void *ret;
+    int ints_enabled = 0;
+    unsigned long long i, stack_end;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
+
+    stack_end = next_kernel_stack + KSTACK_SIZE;
+    for (i = next_kernel_stack; i < stack_end; i += PAGE_SIZE) {
+        index = walk_page_table(i, page_map_l4, &pt);
+        pt[index].avl = ALLOC_ON_DEMAND; /* Set on demand allocation bit. */
+        pt[index].present = 0;
+    }
+
+    if (ints_enabled)
+        STI;
+    /* Advance to next stack since stacks grow downward. */
+    next_kernel_stack += KSTACK_SIZE;
+
+    /* Make sure stack aligned and before the next stack. */
+    ret = (void *) next_kernel_stack - STACK_ALLIGN;
+
+    return ret;
+}
+
+void MMU_free_kstack(void *ptr) {
+    uint64_t addr = (uint64_t) ptr;
+    int pages;
+
+    addr -= KSTACK_SIZE - STACK_ALLIGN;
+    pages = KSTACK_SIZE / PAGE_SIZE;
+
+    if (KSTACK_SIZE % PAGE_SIZE)
+        pages++;
+
+    MMU_free_pages((void *) addr, pages);
 }

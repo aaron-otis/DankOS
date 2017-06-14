@@ -109,5 +109,7 @@ void MMU_free_page(void *);
 void MMU_free_pages(void *, unsigned int num);
 extern void MMU_page_fault_handler(int irq, int error, void *arg);
 void *kbrk(intptr_t increment);
+void *MMU_alloc_kstack();
+void MMU_free_kstack(void *ptr);
 
 #endif
