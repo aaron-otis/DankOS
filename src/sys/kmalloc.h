@@ -4,8 +4,8 @@
 #include <stddef.h>
 
 void *kmalloc(size_t size);
-void free(void *ptr);
-void *calloc(size_t nmemb, size_t size);
-void *realloc(void *ptr, size_t _size);
+void kfree(void *ptr);
+void *kcalloc(size_t nmemb, size_t size);
+void *krealloc(void *ptr, size_t _size);
 
 #endif

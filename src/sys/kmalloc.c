@@ -144,7 +144,7 @@ void *kmalloc(size_t size) {
 
         brk = kbrk(newsize); /* Create a new free block */
         if (brk == (void *) -1) {
-            printk("kbrk() error");
+            printk("kbrk() error in kmalloc()\n");
             return NULL;
         }
 
@@ -188,7 +188,7 @@ void *kmalloc(size_t size) {
  * exist.
  */
 
-void free(void *ptr) {
+void kfree(void *ptr) {
     Block *header, *temp = NULL;
 
     /* Check to see if |ptr| is NULL and silently return if so */
@@ -229,7 +229,7 @@ void free(void *ptr) {
 
         /* Adjust size with kbrk() and check for errors */
         if (kbrk(-(header->size + ALIGNED_BLOCK)) == (void *) -1) {
-            printk("kbrk() error");
+            printk("kbrk() error in kfree()\n");
         }
         /* The previous block is now the last block and must point to NULL */
         if (temp) {
@@ -246,7 +246,7 @@ void free(void *ptr) {
  * and returns a pointer to the beginning of the first block.
  */
 
-void *calloc(size_t nmemb, size_t size) {
+void *kcalloc(size_t nmemb, size_t size) {
     size_t total_size = nmemb * size;
     void *ret = kmalloc(total_size);
 
@@ -276,7 +276,7 @@ void *calloc(size_t nmemb, size_t size) {
     return ret;
 }
 
-void *realloc(void *ptr, size_t size) {
+void *krealloc(void *ptr, size_t size) {
     Block *header, *temp, new;
     void *ret;
 
@@ -288,7 +288,7 @@ void *realloc(void *ptr, size_t size) {
      * return NULL
      */
     if (!size) {
-        free(ptr);
+        kfree(ptr);
         return NULL;
     }
 
@@ -339,7 +339,7 @@ void *realloc(void *ptr, size_t size) {
             if (ret) {
                 /* Copy old data to new space */
                 memcpy(ret, (char *) header + ALIGNED_BLOCK, header->size);
-                free(ptr);
+                kfree(ptr);
             }
         }
     }
