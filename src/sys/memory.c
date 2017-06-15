@@ -444,25 +444,37 @@ extern void MMU_page_fault_handler(int irq, int error, void *arg) {
 
 void *kbrk(intptr_t increment) {
     uint64_t size;
-    int remainder;
+    int remainder, ints_enabled = 0;
     void *ret;
 
-    if (!increment)
-        return (void *) next_virtual_address;
-    else if (increment < 0) {
-        printk("kbrk error: increment %p\n", increment);
-        return (void *) -1;
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
     }
 
-    size = (uint64_t) increment / PAGE_SIZE;
-    remainder = (uint64_t) increment % PAGE_SIZE;
+    if (!increment)
+        ret = (void *) next_virtual_address;
+    else if (increment < 0) {
+        ret = (void *) next_virtual_address;
+        /*
+        printk("kbrk error: increment %p\n", increment);
+        return (void *) -1;
+        */
+    }
+    else {
+        size = (uint64_t) increment / PAGE_SIZE;
+        remainder = (uint64_t) increment % PAGE_SIZE;
 
-    if (remainder)
-        size++;
+        if (remainder)
+            size++;
 
-    ret = MMU_alloc_pages(size);
-    if (!ret)
-        ret = (void *) -1;
+        ret = MMU_alloc_pages(size);
+        if (!ret)
+            ret = (void *) -1;
+    }
+
+    if (ints_enabled)
+        STI;
 
     return ret;
 }
@@ -485,14 +497,14 @@ void *MMU_alloc_kstack() {
         pt[index].avl = ALLOC_ON_DEMAND; /* Set on demand allocation bit. */
         pt[index].present = 0;
     }
-
-    if (ints_enabled)
-        STI;
     /* Advance to next stack since stacks grow downward. */
     next_kernel_stack += KSTACK_SIZE;
 
     /* Make sure stack aligned and before the next stack. */
     ret = (void *) next_kernel_stack - STACK_ALLIGN;
+
+    if (ints_enabled)
+        STI;
 
     return ret;
 }
@@ -501,7 +513,7 @@ void MMU_free_kstack(void *ptr) {
     uint64_t addr = (uint64_t) ptr;
     int pages;
 
-    addr -= KSTACK_SIZE - STACK_ALLIGN;
+    addr -= addr % KSTACK_SIZE;
     pages = KSTACK_SIZE / PAGE_SIZE;
 
     if (KSTACK_SIZE % PAGE_SIZE)
