@@ -53,8 +53,13 @@ static int scroll_screen() {
 }
 
 extern int VGA_set_attr(char fg, char bg, char blink) {
+    int ints_enabled = 0;
 
-    //attributes = (blink << VGA_BLINK_SHIFT) | (bg << VGA_BG_SHIFT) | fg;
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
+
     text_attr.blink = blink;
     text_attr.fg = fg;
     text_attr.bg = bg;
@@ -63,23 +68,57 @@ extern int VGA_set_attr(char fg, char bg, char blink) {
     cursor_attr.fg = ~fg;
     cursor_attr.bg = ~bg;
 
+    if (ints_enabled)
+        STI;
+
     return EXIT_SUCCESS;
 }
 
 extern char VGA_get_attr() {
+    char *ret;
+    int ints_enabled = 0;
 
-    return *(char *) &text_attr;
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
+
+    ret = (char *) &text_attr;
+
+    if (ints_enabled)
+        STI;
+
+    return *ret;
 }
 
 extern void VGA_clear(void) {
+    int ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
 
     /* Set all bytes in video memory to zero. */
     memset(VGA_PTR, 0, VGA_BUF_LEN * 2);
+
+    if (ints_enabled)
+        STI;
 }
 
 extern int VGA_init(void) {
+    int ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
+
     VGA_clear(); /* Clear screen. */
     buffer_pos = cursor_pos = 0; /* Initial position. */
+
+    if (ints_enabled)
+        STI;
 
     return EXIT_SUCCESS;
 }
@@ -131,6 +170,12 @@ extern void VGA_display_str(const char *s) {
 }
 
 extern int VGA_set_cursor_pos(int pos) {
+    int ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
 
     /* Clear cursor attributes. */
     vga_buff[cursor_pos] &= LOWER_MASK;
@@ -143,6 +188,9 @@ extern int VGA_set_cursor_pos(int pos) {
 
     /* set cursor attributes. */
     vga_buff[cursor_pos] |= (*(char *) &cursor_attr) << CHAR_BIT;
+
+    if (ints_enabled)
+        STI;
 
     return EXIT_SUCCESS;
 }
@@ -158,23 +206,74 @@ extern int VGA_get_buf_pos() {
 }
 
 extern void VGA_disable_cursor() {
+    int ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
+
     *(char *) &cursor_attr = 0;
     vga_buff[cursor_pos] &= LOWER_MASK;
     vga_buff[cursor_pos] |= (*(char *) &text_attr) << CHAR_BIT;
+
+    if (ints_enabled)
+        STI;
 }
 
 extern void VGA_enable_cursor(char fg, char bg, char blink) {
+    int ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
+
     cursor_attr.blink = blink;
     cursor_attr.fg = fg;
     cursor_attr.bg = bg;
     vga_buff[cursor_pos] &= LOWER_MASK;
     vga_buff[cursor_pos] |= (*(char *) &cursor_attr) << CHAR_BIT;
+
+    if (ints_enabled)
+        STI;
 }
 
 extern void VGA_backspace() {
+    int ints_enabled = 0;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
 
     if (buffer_pos % SCREEN_WIDTH) {
         vga_buff[--buffer_pos] = ((*(char *) &text_attr) << CHAR_BIT) | 0;
         VGA_set_cursor_pos(cursor_pos - 1);
     }
+
+    if (ints_enabled) /* If interrupts were initially enabled, enable them. */
+        STI;
+}
+
+int VGA_row_count(void) {
+    return SCREEN_HEIGHT;
+}
+
+int VGA_col_count(void) {
+    return SCREEN_WIDTH;
+}
+
+void VGA_display_attr_char(int x, int y, char c, int fg, int bg) {
+    int ints_enabled = 0;
+    unsigned char attr = bg << VGA_BG_SHIFT | fg;
+
+    if (are_interrupts_enabled()) {
+        ints_enabled = 1;
+        CLI;
+    }
+    vga_buff[y * SCREEN_WIDTH + x] = attr << CHAR_BIT | c;
+
+    if (ints_enabled) /* If interrupts were initially enabled, enable them. */
+        STI;
 }

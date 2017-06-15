@@ -43,5 +43,8 @@ extern int VGA_get_buf_pos();
 extern void VGA_disable_cursor();
 extern void VGA_enable_cursor(char fg, char bg, char blink);
 extern void VGA_backspace();
+int VGA_row_count(void);
+int VGA_col_count(void);
+void VGA_display_attr_char(int x, int y, char c, int fg, int bg);
 
 #endif
