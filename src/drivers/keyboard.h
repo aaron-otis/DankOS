@@ -22,7 +22,14 @@
 
 #define KEY_PRESSED 1
 #define KEY_RELEASED 0
+#define KB_BUF_SIZE 256
 
+struct KB_bbuffer {
+    uint8_t buff[KB_BUF_SIZE];
+    uint8_t *head;
+    uint8_t *tail;
+    uint8_t hw_buf_status;
+};
 typedef struct keypress {
     uint32_t codepoint; /* Unicode code point. */
     uint8_t keycode; /* Key code for particular key. */
@@ -41,6 +48,7 @@ extern int KB_enable();
 extern int KB_disable();
 extern keypress KB_get_keypress();
 extern void KB_interrupt_handler(int irq, int error, void *arg);
+char getc();
 
 /*
 extern int KB_set_default_params();

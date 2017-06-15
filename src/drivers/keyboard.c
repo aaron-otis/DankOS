@@ -1,6 +1,8 @@
 #include "keyboard.h"
 #include "interrupts.h"
 #include "pic.h"
+#include "../sys/proc.h"
+#include "../sys/kmalloc.h"
 
 #define KB_TIMEOUT 3
 #define KB_DEFAULT_SCAN_CODE KB_SCAN_CODE_2
@@ -32,6 +34,8 @@ struct KB_int_arg {
 static int modifiers_pressed;
 static int toggles_set;
 static struct KB_int_arg arg;
+static struct KB_bbuffer kbb;
+static ProcessQueue blocked_procs;
 
 /* Static functions. */
 
@@ -263,6 +267,9 @@ extern int KB_init(){
     modifiers_pressed = 0;
     toggles_set = 0;
 
+    kbb.head = kbb.tail = kbb.buff;
+    blocked_procs = kmalloc(sizeof(blocked_procs));
+    PROC_init_queue(blocked_procs, BLOCK);
 
     /* Reset keyboard. */
     res = KB_reset();
@@ -304,13 +311,28 @@ extern int KB_init(){
     return EXIT_SUCCESS;
 }
 
+static char consume_next(struct KB_bbuffer *kbb) {
+    char ret;
+
+    if (kbb->head == kbb->tail) { /* Check if buffer is empty. */
+        printk("consume_next found an empty buffer in KB driver!\n");
+    }
+
+    ret = *kbb->head++;
+
+    /* Wrap head to beginning if at the end. */
+    if (kbb->head >= kbb->buff + KB_BUF_SIZE)
+        kbb->head = kbb->buff;
+
+    return ret;
+}
+
 extern keypress KB_get_keypress() {
     keypress key;
     uint8_t res;
 
     key.codepoint = 0; /* Zero this in case characters are not printable. */
-    res = PS2_read(); /* Use interrupt driven function. */
-
+    res = PS2_read();
 
     /* Check to see if key is released or pressed. */
     if (res - KB_KEY_RELEASE_OFFSET >= 0)
@@ -405,13 +427,78 @@ extern int KB_set_key_type(int scan_code, int type){
 }
 */
 
+static int queue_byte(uint8_t byte, struct KB_bbuffer *kbb) {
+    int int_enabled = 0, ret = EXIT_FAILURE;
+
+    if (are_interrupts_enabled()) {
+        int_enabled = 1;
+        CLI;
+    }
+
+    /* Check that buffer is not full. */
+    if (kbb->head != kbb->tail + 1) {
+
+        *kbb->tail++ = byte; /* Add byte to queue. */
+
+        /* Wrap tail if at end of queue. */
+        if (kbb->tail >= kbb->buff + KB_BUF_SIZE)
+            kbb->tail = kbb->buff;
+
+        if (int_enabled)
+            STI;
+
+        ret = EXIT_SUCCESS;
+    }
+    else
+        printk("KB buffer full!\n");
+
+    if (int_enabled)
+        STI;
+
+    return ret; /* Buffer is full. */
+}
+
 extern void KB_interrupt_handler(int irq, int error, void *arg) {
     keypress kp;
+    char c;
 
     kp = KB_get_keypress(); /* Get key pressed. */
+    if (kp.modifiers & L_SHIFT_PRESSED || kp.modifiers & R_SHIFT_PRESSED) {
+        if (kp.codepoint >= 'a' && kp.codepoint <= 'z')
+            c = kp.codepoint - 32;
+        else if (kp.codepoint == '1')
+            c = '!';
+        else if (kp.codepoint == '2')
+            c = '@';
+        else if (kp.codepoint == '3')
+            c = '#';
+        else
+            c = kp.codepoint;
+    }
+    else
+        c = kp.codepoint;
 
-    if (kp.codepoint)
-        printk("%c", kp.codepoint); /* Print character. */
-
+    if (c) {
+        if (queue_byte(c, &kbb))
+            printk("queue_byte failed in KB driver!\n");
+        PROC_unblock_all(blocked_procs);
+    }
+    int debug = 1;
+    //while (debug);
     IRQ_end_of_interrupt(irq); /* Signal EOI. */
+}
+
+char getc() {
+    char c;
+
+    CLI;
+    while (kbb.head == kbb.tail){
+        PROC_block_on(blocked_procs, 1);
+        CLI;
+    }
+    STI;
+
+    c = consume_next(&kbb);
+
+    return c;
 }
