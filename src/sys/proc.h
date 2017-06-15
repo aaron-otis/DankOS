@@ -6,13 +6,6 @@
 typedef void (*kproc_t)(void*);
 typedef uint64_t pid_t;
 
-void PROC_init(void);
-void PROC_run(void);
-void PROC_create_kthread(kproc_t entry_point, void *arg);
-void PROC_reschedule(void);
-void exit(void);
-void yield(void);
-
 typedef struct proc_t {
     uint64_t rax;
     uint64_t rbx;
@@ -38,12 +31,29 @@ typedef struct proc_t {
     uint64_t es;
     uint64_t fs;
     uint64_t gs;
-    pid_t id;
+    pid_t pid;
     /* file descriptors. */
-    struct proc_t *next;
+    struct proc_t *proc_next;
+    struct proc_t *sched_next;
+    struct proc_t *block_next;
 } __attribute__ ((packed)) proc_t;
+
+typedef struct ProcessQueue {
+} ProcessQueue;
 
 extern proc_t *cur_proc;
 extern proc_t *next_proc;
+
+void PROC_init(void);
+void PROC_run(void);
+proc_t *PROC_create_kthread(kproc_t entry_point, void *arg);
+void PROC_reschedule(void);
+void kexit(void);
+void yield(void);
+
+void PROC_block_on(ProcessQueue *, int enable_ints);
+void PROC_unblock_all(ProcessQueue *);
+void PROC_unblock_head(ProcessQueue *);
+void PROC_init_queue(ProcessQueue *);
 
 #endif
