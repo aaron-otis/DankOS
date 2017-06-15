@@ -10,6 +10,7 @@
 #include "sys/memory.h"
 #include "sys/kmalloc.h"
 #include "sys/proc.h"
+#include "test/snakes.h"
 #include "init.h"
 #include "gdt.h"
 
@@ -82,7 +83,7 @@ void tss_init() {
 
 void ktest(void *arg) {
     printk("Testing kernel thread.\n");
-    exit();
+    kexit();
 }
 
 /**
@@ -107,15 +108,8 @@ int kernel_main(MB_basic_tag *mb_tag) {
     //virutal_addr_tests();
     printk("\nD A N K O S\n\n>");
 
-    PROC_create_kthread(ktest, NULL);
-    PROC_create_kthread(ktest, NULL);
-
-    int debug = 1; /* DEBUGGING */
-    //while (debug); /* DEBUGGING */
-
     while (1) {
         PROC_run();
-
         HALT_CPU
     }
 
