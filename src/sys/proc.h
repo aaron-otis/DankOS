@@ -36,10 +36,19 @@ typedef struct proc_t {
     struct proc_t *proc_next;
     struct proc_t *sched_next;
     struct proc_t *block_next;
+    struct proc_t *proc_prev;
+    struct proc_t *sched_prev;
+    struct proc_t *block_prev;
 } __attribute__ ((packed)) proc_t;
 
-typedef struct ProcessQueue {
-} ProcessQueue;
+typedef enum {PROCESS, SCHEDULE, BLOCK} Queue;
+
+struct process_queue {
+    proc_t *head;
+    Queue queue_type;
+};
+
+typedef struct process_queue * ProcessQueue;
 
 extern proc_t *cur_proc;
 extern proc_t *next_proc;
@@ -51,9 +60,9 @@ void PROC_reschedule(void);
 void kexit(void);
 void yield(void);
 
-void PROC_block_on(ProcessQueue *, int enable_ints);
-void PROC_unblock_all(ProcessQueue *);
-void PROC_unblock_head(ProcessQueue *);
-void PROC_init_queue(ProcessQueue *);
+void PROC_block_on(ProcessQueue queue, int enable_ints);
+void PROC_unblock_all(ProcessQueue queue);
+void PROC_unblock_head(ProcessQueue queue);
+void PROC_init_queue(ProcessQueue queue, Queue type);
 
 #endif

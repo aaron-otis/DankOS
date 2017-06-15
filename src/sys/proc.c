@@ -13,16 +13,132 @@
 #define RFLAG_INT_ENABELED (1 << 9)
 
 static proc_t *main_proc_ptr;
-static proc_t *process_list, *blocked_list;
-static proc_t *process_list_tail, *blocked_list_tail;
+static ProcessQueue process_list, sched_list;
+static proc_t *process_list_tail, *sched_list_tail;
 static unsigned long long next_pid;
 proc_t *cur_proc;
 proc_t *next_proc;
 
-static void unlink_proc(proc_t proc, ProcessQueue queue) {
+static void unlink_proc(proc_t *proc, ProcessQueue queue) {
+    proc_t *temp = queue->head;
+
+    if (queue->head == proc) {
+        if (queue->queue_type == PROCESS) {
+            queue->head = proc->proc_next;
+        }
+        else if (queue->queue_type == SCHEDULE) {
+            queue->head = proc->sched_next;
+        }
+        else if (queue->queue_type == BLOCK) {
+            queue->head = proc->block_next;
+        }
+        else {
+            printk("\nunlink_proc error. Invalid queue type.\n");
+            return;
+        }
+    }
+    else if (queue->head) {
+        if (queue->queue_type == PROCESS) {
+            while (temp != proc)
+                temp = temp->proc_next;
+
+            if (temp)
+                temp->proc_prev->proc_next = temp->proc_next;
+            else
+                printk("\nUnable to unlink. Process not found!\n");
+        }
+        else if (queue->queue_type == SCHEDULE) {
+            while (temp != proc)
+                temp = temp->sched_next;
+
+            if (temp)
+                temp->sched_prev->sched_next = temp->sched_next;
+            else
+                printk("\nUnable to unlink. Process not found!\n");
+        }
+        else if (queue->queue_type == BLOCK) {
+            while (temp != proc)
+                temp = temp->block_next;
+
+            if (temp)
+                temp->block_prev->block_next = temp->block_next;
+            else
+                printk("\nUnable to unlink. Process not found!\n");
+        }
+        else {
+            printk("\nunlink_proc error. Invalid queue type.\n");
+            return;
+        }
+    }
+
+
 }
 
-static void append_proc(proc_t proc, ProcessQueue queue) {
+static void append_proc(proc_t *proc, ProcessQueue queue) {
+    proc_t *temp = queue->head;
+
+    proc->proc_next = proc->sched_next = proc->block_next = NULL;
+    if (temp) {
+        if (queue->queue_type == PROCESS) {
+            while (temp->proc_next)
+                temp = temp->proc_next;
+
+            temp->proc_next = proc;
+        }
+        else if (queue->queue_type == SCHEDULE) {
+            while (temp->sched_next)
+                temp = temp->sched_next;
+
+            temp->sched_next = proc;
+            proc->sched_prev = temp;
+            proc->block_prev = NULL;
+        }
+        else if (queue->queue_type == BLOCK) {
+            while (temp->block_next)
+                temp = temp->block_next;
+
+            temp->block_next = proc;
+            proc->block_prev = temp;
+            proc->sched_prev = NULL;
+        }
+        else {
+            printk("unlink_proc error. Invalid queue type.\n");
+            return;
+        }
+    }
+    else {
+        queue->head = proc;
+        if (queue->queue_type == PROCESS) {
+            queue->head->proc_prev = NULL;
+        }
+        else if (queue->queue_type == SCHEDULE) {
+            queue->head->sched_prev = NULL;
+            queue->head->block_prev = NULL;
+        }
+        else if (queue->queue_type == BLOCK) {
+            queue->head->block_prev = NULL;
+            queue->head->sched_prev = NULL;
+        }
+        else {
+            printk("unlink_proc error. Invalid queue type.\n");
+            return;
+        }
+    }
+}
+
+static int process_tracked(proc_t *proc) {
+    proc_t *temp = process_list->head;
+    int ret = EXIT_FAILURE;
+
+    if (proc) {
+        while (temp && temp != proc)
+            temp = temp->proc_next;
+
+        if (temp == proc)
+            ret = EXIT_SUCCESS;
+    }
+
+    return ret;
 }
 
 static int schedule_proc(proc_t *proc) {
@@ -34,26 +150,14 @@ static int schedule_proc(proc_t *proc) {
         CLI;
     }
 
-    if (process_list_tail) {
-        tail = process_list_tail;
-        tail->proc_next = proc;
-    }
-
-    process_list_tail = proc;
-    if (!process_list)
-        process_list = process_list_tail;
-
-    process_list_tail->proc_next = process_list;
+    append_proc(proc, sched_list);
+    if (!process_tracked(proc))
+        append_proc(proc, process_list);
 
     if (ints_enabled)
         STI;
 
     return ret;
-}
-
-static int block_proc(proc_t *proc) {
-
-    return EXIT_SUCCESS;
 }
 
 void PROC_reschedule(void) {
@@ -64,14 +168,18 @@ void PROC_reschedule(void) {
         CLI;
     }
 
-    if (!process_list) {
-        next_proc = main_proc_ptr;
-        next_proc->rflags = RFLAG_INT_ENABELED;
+    if (!cur_proc)
+        printk("PROC_reschedule error. cur_proc is null!\n");
+
+    next_proc = cur_proc->sched_next;
+    if (!next_proc) {
+        if (sched_list->head)
+            next_proc = sched_list->head;
+        else {
+            next_proc = main_proc_ptr;
+            next_proc->rflags = RFLAG_INT_ENABELED;
+        }
     }
-    else if (cur_proc->proc_next)
-        next_proc = cur_proc->proc_next;
-    else if (process_list)
-        next_proc = process_list;
 
     if (ints_enabled)
         STI;
@@ -83,30 +191,13 @@ void PROC_yield_isr(int irq, int err, void *arg) {
 }
 
 void PROC_exit_isr(int irq, int err, void *arg) {
-    proc_t *head = process_list, *prev = NULL;
 
-    while (cur_proc && head != cur_proc) {
-        prev = head;
-        head = head->proc_next;
-    }
-
-    /* If there is only one process in the list, set the list to NULL. */
-    if (process_list == process_list_tail)
-        process_list = NULL;
-    else if (head == process_list) { /* Removed the first item in the list. */
-        process_list = process_list->proc_next;
-        process_list_tail->proc_next = process_list;
-    }
-    else if (head) /* Remove |cur_proc| from |process_list|. */
-        prev->proc_next = head->proc_next;
-    else {
-        printk("PROC_exit_isr error()\n");
-        HALT_CPU
-    }
+    unlink_proc(cur_proc, sched_list);
+    unlink_proc(cur_proc, process_list);
 
     PROC_reschedule();
-    MMU_free_kstack((void *) head->rsp);
-    kfree(head);
+    MMU_free_kstack((void *) cur_proc->rsp);
+    kfree(cur_proc);
     cur_proc = NULL;
 }
 
@@ -128,8 +219,14 @@ void PROC_init(void) {
 
     cur_proc = next_proc = NULL; /* No processes scheduled yet. */
     main_proc_ptr = NULL; /* Main process struct not created yet. */
-    process_list = blocked_list = NULL; /* No threads created yet. */
-    process_list_tail = blocked_list_tail = NULL;
+
+    /* Initialize queues. */
+    process_list = kmalloc(sizeof( ProcessQueue));
+    sched_list = kmalloc(sizeof( ProcessQueue));
+    PROC_init_queue(process_list, PROCESS);
+    PROC_init_queue(sched_list, SCHEDULE);
+
+    process_list_tail = sched_list_tail = NULL;
     next_pid = 1; /* First pid. */
 
     /* Register yield system call. */
@@ -155,9 +252,6 @@ void PROC_run(void) {
     main_proc_ptr = &main_proc;
     main_proc.cs = KERN_CS_OFFSET;
     cur_proc = &main_proc;
-
-    /* Set the next thread to be run from the queue of scheduled processes. */
-    cur_proc->proc_next = process_list;
 
     if (ints_enabled)
         STI;
@@ -214,14 +308,34 @@ proc_t *PROC_create_kthread(kproc_t entry_point, void *arg) {
     return ret;
 }
 
-void PROC_block_on(ProcessQueue *pq, int enable_ints) {
+void PROC_block_on(ProcessQueue queue, int enable_ints) {
+
+    if (!queue)
+        return;
+
+    unlink_proc(cur_proc, sched_list);
+    append_proc(cur_proc, queue);
+
+    if (enable_ints)
+        STI;
+
+    yield();
 }
 
-void PROC_unblock_all(ProcessQueue *pg) {
+void PROC_unblock_head(ProcessQueue queue) {
+    proc_t *temp = queue->head;
+
+    unlink_proc(temp, queue);
+    append_proc(temp, sched_list);
 }
 
-void PROC_unblock_head(ProcessQueue *pg) {
+void PROC_unblock_all(ProcessQueue queue) {
+
+    while (queue->head)
+        PROC_unblock_head(queue);
 }
 
-void PROC_init_queue(ProcessQueue *pg) {
+void PROC_init_queue(ProcessQueue queue, Queue type) {
+    queue->head = NULL;
+    queue->queue_type = type;
 }
