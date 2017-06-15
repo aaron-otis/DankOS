@@ -9,11 +9,11 @@
 
 /* Random functions provided by Dr. Nico. */
 static unsigned int seed = 1;
-static void srand (int newseed) {
+static void ksrand (int newseed) {
     seed = (unsigned)newseed & 0x7fffffffffffffffU;
 }
 
-unsigned int rand (void) {
+unsigned int krand (void) {
     seed = (seed * 6364136223846793005U + 1442695040888963407U)
                  & 0x7fffffffffffffffU;
     return (unsigned int) seed / 1000000;
@@ -165,19 +165,19 @@ void kmalloc_test() {
     test = kmalloc(10);
     *test = 1;
     printk("kmalloc gave %lp\n", test);
-    free(test);
+    kfree(test);
     printk("freed %p\n", test);
     test = kmalloc(5);
     printk("kmalloc gave %lp\n\n", test);
 
     for (i = 0; i < KMALLOC_TEST_LEN; i++) {
         printk("Test %d\n", i);
-        test = kmalloc(rand());
+        test = kmalloc(krand());
         printk("kmalloc gave %p\n", test);
         *test = i;
         printk("Wrote %x\n", *test);
         if (test)
-            free(test);
+            kfree(test);
         printk("freed %p\n", test);
     }
 }
