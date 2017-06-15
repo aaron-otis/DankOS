@@ -23,6 +23,9 @@ lib_obj_files := $(patsubst src/lib/%.c, $(build_dir)/libs/%.o, $(lib_files))
 sys_files := $(wildcard src/sys/*.c)
 sys_obj_files := $(patsubst src/sys/%.c, $(build_dir)/sys/%.o, $(sys_files))
 
+test_files := $(wildcard src/test/*.c)
+test_obj_files := $(patsubst src/test/%.c, $(build_dir)/test/%.o, $(test_files))
+
 CC = bin/$(arch)-elf-gcc
 CFLAGS = -Wall -g -c
 
@@ -32,6 +35,9 @@ all: update-img
 
 clean:
 	rm -r build
+
+test:
+	cd src && make test && cd ..
 
 run: img
 	qemu-system-x86_64 -s -drive format=raw,file=$(img) -serial stdio
@@ -68,7 +74,7 @@ update-img: $(kernel) $(grup_cfg) make-img
 	@sudo losetup -d /dev/loop1
 
 $(kernel): $(assembly_object_files) $(linker_script) $(c_object_files) build_objs
-	ld -n -T $(linker_script) -o $(kernel) $(assembly_object_files) $(c_object_files) $(lib_obj_files) $(drv_object_files) $(sys_obj_files)
+	ld -n -T $(linker_script) -o $(kernel) $(assembly_object_files) $(c_object_files) $(lib_obj_files) $(drv_object_files) $(sys_obj_files) $(test_obj_files)
 
 build_objs:
 	cd src && $(MAKE) && cd ..

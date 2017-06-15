@@ -13,14 +13,23 @@ lib_headers := $(wildcard *.h)
 sys_files := $(wildcard sys/*.c)
 sys_obj_files := $(patsubst sys/%.c, $(build_dir)/sys/%.o, $(sys_files))
 
+test_files := $(wildcard test/*.c)
+test_obj_files := $(patsubst test/%.c, $(build_dir)/test/%.o, $(test_files))
+
 CC = ../bin/$(arch)-elf-gcc 
 CFLAGS = -Wall -g
 
-.PHONY: all drivers libs
+.PHONY: all drivers libs test
 
 all: drivers libs sys
 
 drivers: gen_code $(driver_object_files)
+
+test: $(test_obj_files)
+
+$(build_dir)/test/%.o: test/%.c
+	mkdir -p $(shell dirname $@)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(build_dir)/drivers/%.o: drivers/%.c
 	mkdir -p $(shell dirname $@)
