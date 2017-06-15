@@ -81,8 +81,9 @@ void tss_init() {
         STI;
 }
 
-void ktest(void *arg) {
-    printk("Testing kernel thread.\n");
+void read_keyboard() {
+    while (1)
+        printk("%c", getc());
     kexit();
 }
 
@@ -105,8 +106,9 @@ int kernel_main(MB_basic_tag *mb_tag) {
     if (init() == EXIT_FAILURE)
         halt_cpu();
 
-    //virutal_addr_tests();
     printk("\nD A N K O S\n\n>");
+
+    PROC_create_kthread(read_keyboard, NULL);
 
     while (1) {
         PROC_run();
